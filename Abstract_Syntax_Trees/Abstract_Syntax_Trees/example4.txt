@@ -1,0 +1,6 @@
+# Just a simple integer.
+1234567890
+# A sum of 4 numbers
+4 + 3 + 2 + 1
+# The result should be 999
+900 + 3 * 32 + 2 % 5 + 4 / 2 - 1
