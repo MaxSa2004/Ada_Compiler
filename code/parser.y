@@ -8,7 +8,13 @@ void yyerror (char const *);
 %define api.value.type{float}
 
 /* Tokens */
-%%
+%%token PLUS MINUS
+%%token MULT DIV
+%%LBRACE RBRACE
+%% NUM
+%% EOL
+%%left PLUS MINUS
+%%left MULT DIV
 
 /* Regras de produção */
 
