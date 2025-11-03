@@ -55,7 +55,7 @@ top: expr {printf("%d\n", $1);}
 ;
 
 expr:
-   NUM
+   NUM 
    | expr PLUS expr {$$ = $1 + $3;}
    | expr MINUS expr {$$ = $1 - $3;}
    | expr MULT expr {$$ = $1 * $3;}
