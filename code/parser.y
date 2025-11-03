@@ -8,13 +8,35 @@ void yyerror (char const *);
 %define api.value.type{float}
 
 /* Tokens */
-%%token PLUS MINUS
-%%token MULT DIV
-%%LBRACE RBRACE
-%% NUM
-%% EOL
+-- Expressions
+%%token PLUS MINUS -- + -
+%%token MULT DIV -- * /
+%%token LPAREN RPAREN -- ()
+%%token EQ INEQ -- = /=
+%%token OR -- or
+%%token AND  -- and
+%%token XOR -- xor
+%%token LESS GREATER -- < >
+%%token LEQ GEQ -- <= >=
+%%token MOD REM -- mod rem
+%%token ASSIGN -- :=
+-- Literals
+%%token ID
+%%token TRUE FALSE -- true false
+%%token STRING_LITERAL
+%%token NUM
+-- IO
+%%token PUT GET -- put_line get_line ?
+-- Control Flow
+%%token IF THEN ELSE -- if A then B else C
+%%token WHILE LOOP END -- while A loop end
+-- Basic Types
+%%token INTEGER
+%%token BOOLEAN
+%%token STRING
+-- Precendence
 %%left PLUS MINUS
-%%left MULT DIV
+%%left MULT DIV MOD REM
 
 /* Regras de produção */
 
