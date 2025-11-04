@@ -23,14 +23,16 @@ Exp mk_idexp(char *ident)
   return ptr;
 }
 /* make string */
-Exp mk_strexp(char* string){
+Exp mk_strexp(char* string)
+{
   Exp ptr = malloc(sizeof(struct _Exp));
   ptr->exp_t = STREXP;
   ptr->fields.string = string;
   return ptr;
 }
 /* make boolean */
-Exp mk_boolexp(int bool){
+Exp mk_boolexp(int bool)
+{
   Exp ptr = malloc(sizeof(struct _Exp));
   ptr->exp_t = BOOLEXP;
   ptr->fields.boolVal = bool;
@@ -44,6 +46,15 @@ Exp mk_opexp(Exp left, BinOp op, Exp right)
   ptr->fields.opexp.left = left;
   ptr->fields.opexp.right = right;
   ptr->fields.opexp.op = op;
+  return ptr;
+}
+/* expression NOT and Unary Minus*/
+Exp mk_unoexp(UnOp op, Exp child)
+{
+  Exp ptr = malloc(sizeof(struct _Exp));
+  ptr->exp_t = UNOEXP;
+  ptr->fields.unoexp.op = op;
+  ptr->fields.unoexp.child = child;
   return ptr;
 }
 
@@ -116,9 +127,25 @@ void print_op(BinOp op) {
   case REMAINDER:
     printf("rem");
     break;
-  }
+  default:
+    fprintf(stderr, "print_op: unknown Op %d\n", op);
+    break;
+  }           
+}
 
-                
+void print_unop(UnOp op){
+  switch (op)
+  {
+  case NOTexp:
+    printf("not");
+    break;
+  case UMINUS:
+    printf("-");
+    break;
+  default:
+    fprintf(stderr, "print_unop: unknown UnOp %d\n", op);
+    break;
+  }
 }
 
 void print_exp(Exp ptr) {
@@ -146,6 +173,10 @@ void print_exp(Exp ptr) {
     } else {
       printf("true");
     }
+    break;
+  case UNOEXP:
+    print_unop(ptr->fields.unoexp.op);
+    print_exp(ptr->fields.unoexp.child);
     break;
   default:
     fprintf(stderr, "print_exp: unknown ExpType %d\n", ptr->exp_t);

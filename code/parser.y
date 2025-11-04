@@ -48,6 +48,7 @@ Exp root = null;
 %token MAIN
 %token BEGIN
 %token PROCEDURE
+%token IS
 /* Precendence */
 %left OR XOR
 %left AND
@@ -59,12 +60,14 @@ Exp root = null;
 
 %start top
 
-%type <exp_node> top
+%type <proc_node> top
 %type <exp_node> expr /* expression */
 %type <stm_node> stm /* statement */
+%type <proc_node> proc /* procedure */
+%type <stm_list_node> stm_list /* stm_list */
 %%
 /* Regras de produção  */
-top: expr {printf(root = $1);} /* return AST root -> Main Procedure */
+top: proc {printf(root = $1);} /* return AST root -> Main Procedure */
 ;
 
 expr:
@@ -89,11 +92,23 @@ expr:
    | expr GEQ expr {$$ = mk_opexp($1, GEQexp, $3);}
    | expr MOD expr {$$ = mk_opexp($1, MODULUS, $3);}
    | expr REM expr {$$ = mk_opexp($1, REMAINDER, $3);}
-   | MINUS expr %prec UNARY_MINUS {}
-   | NOT expr {}
+   | MINUS expr %prec UNARY_MINUS {$$ = mk_unoexp(UMINUS, $2);}
+   | NOT expr {$$ = mk_unoexp(NOTexp, $2);}
    ;
 
-stm: ID ASSIGN expr {$$ = mk_assign($1, $3);};
+proc: PROCEDURE MAIN IS BEGIN stm_list END MAIN SEMICOLON {};
+
+stm_list: stm {}
+   | stm stm {}
+   ;
+
+stm: ID ASSIGN expr SEMICOLON {$$ = mk_assign($1, $3);};
+   | IF expr THEN stm_list ELSE stm_list END IF SEMICOLON {}
+   | WHILE expr LOOP stm_list END LOOP SEMICOLON {}
+   | PUT expr SEMICOLON {}
+   | GET ID SEMICOLON {}
+   ;
+
 
 
 
