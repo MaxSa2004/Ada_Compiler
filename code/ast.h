@@ -30,7 +30,7 @@ struct _Exp {
 
 typedef struct _Exp *Exp;
 
-typedef enum { ASSIGNSTM, COMPOUNDSTM }
+typedef enum { ASSIGNSTM, COMPOUNDSTM, IFSTM, WHILESTM, PUTSTM, GETSTM, PROCSTM }
   StmType;
 
 struct _Stm {
@@ -44,15 +44,41 @@ struct _Stm {
       struct _Stm *fst;
       struct _Stm *snd;
     } compound;      // COMPOUNDSTM
+    struct {
+      Exp cond;
+      struct _Stm *then_branch;
+      struct _Stm *else_branch;
+    } ifstm;        // IFSTM
+    struct {
+      Exp cond;
+      struct _Stm *branch;
+    } whilestm;     // WHILESTM
+    struct {
+      Exp output;
+    } putstm;       // PUT LINE STM
+    struct {
+      char *ident; 
+    } getstm;       // GET LINE STM
+    struct {
+      struct _Stm *statements;
+    } proc;
   } fields;
 };
 
+
+
+
 typedef struct _Stm *Stm;
 
-extern Exp root;
+extern Stm root;
 
 extern Stm mk_compound(Stm, Stm);
 extern Stm mk_assign(char *, Exp);
+extern Stm mk_if(Exp, Stm, Stm);
+extern Stm mk_while(Exp, Stm);
+extern Stm put_line(Exp);
+extern Stm get_line(char *);
+extern Stm mk_proc(Stm);
 
 extern Exp mk_opexp(Exp, BinOp, Exp);
 extern Exp mk_numexp(int);

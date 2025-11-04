@@ -10,8 +10,17 @@
 */
 
 #include <stdio.h>
+#include "ast.h"
 #include "parser.tab.h" /* depois de compilar o parser.y */
-
-int main(void) {
-  yyparse();
+extern FILE* yyin; // to read from files
+int main(int argc, char** argv) {
+  if(argc>1){
+    yyin = fopen(argv[1], "r");
+    if(!yyin) {perror("fopen"); return 1;}
+  }
+  if(yyparse()==0 && root){
+    print_stm(root);
+  }
+  if(yyin && yyin != stdin) fclose(yyin);
+  return 0;
 }

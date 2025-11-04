@@ -60,7 +60,8 @@ Exp mk_unoexp(UnOp op, Exp child)
 
 /* Construct statements
  */
-Stm mk_assign(char *ident, Exp exp) {
+Stm mk_assign(char *ident, Exp exp) 
+{
   Stm ptr = malloc(sizeof(struct _Stm));
   ptr->stm_t = ASSIGNSTM;
   ptr->fields.assign.ident = ident;
@@ -69,11 +70,55 @@ Stm mk_assign(char *ident, Exp exp) {
 }
 
 
-Stm mk_compound(Stm fst, Stm snd) {
+Stm mk_compound(Stm fst, Stm snd) 
+{
   Stm ptr = malloc(sizeof(struct _Stm));
   ptr->stm_t = COMPOUNDSTM;
   ptr->fields.compound.fst = fst;
   ptr->fields.compound.snd = snd;
+  return ptr;
+}
+
+Stm mk_if(Exp cond, Stm then_branch, Stm else_branch)
+{
+  Stm ptr = malloc(sizeof(struct _Stm));
+  ptr->stm_t = IFSTM;
+  ptr->fields.ifstm.cond = cond;
+  ptr->fields.ifstm.then_branch = then_branch;
+  ptr->fields.ifstm.else_branch = else_branch;
+  return ptr;
+}
+
+Stm mk_while(Exp cond, Stm branch)
+{
+  Stm ptr = malloc(sizeof(struct _Stm));
+  ptr->stm_t = WHILESTM;
+  ptr->fields.whilestm.cond = cond;
+  ptr->fields.whilestm.branch = branch;
+  return ptr;
+}
+
+Stm put_line(Exp output)
+{
+  Stm ptr = malloc(sizeof(struct _Stm));
+  ptr->stm_t = PUTSTM;
+  ptr->fields.putstm.output = output;
+  return ptr;
+}
+
+Stm get_line(char *ident)
+{
+  Stm ptr = malloc(sizeof(struct _Stm));
+  ptr->stm_t = GETSTM;
+  ptr->fields.getstm.ident = ident;
+  return ptr;
+}
+
+Stm mk_proc(Stm statements)
+{
+  Stm ptr = malloc(sizeof(struct _Stm));
+  ptr->stm_t = PROCSTM;
+  ptr->fields.proc.statements = statements;
   return ptr;
 }
 
@@ -101,13 +146,13 @@ void print_op(BinOp op) {
     printf("/=");
     break;
   case ORexp:
-    printf("or");
+    printf(" or ");
     break;
   case ANDexp:
-    printf("and");
+    printf(" and ");
     break;
   case XORexp:
-    printf("xor");
+    printf(" xor ");
     break;
   case LESSexp:
     printf("<");
@@ -122,10 +167,10 @@ void print_op(BinOp op) {
     printf(">=");
     break;
   case MODULUS:
-    printf("mod");
+    printf(" mod ");
     break;
   case REMAINDER:
-    printf("rem");
+    printf(" rem ");
     break;
   default:
     fprintf(stderr, "print_op: unknown Op %d\n", op);
@@ -137,7 +182,7 @@ void print_unop(UnOp op){
   switch (op)
   {
   case NOTexp:
-    printf("not");
+    printf(" not ");
     break;
   case UMINUS:
     printf("-");
@@ -168,11 +213,7 @@ void print_exp(Exp ptr) {
     printf("%s", ptr->fields.string);
     break;
   case BOOLEXP:
-    if(ptr->fields.boolVal == 0){
-      printf("false");
-    } else {
-      printf("true");
-    }
+    printf(ptr->fields.boolVal  ? "true" : "false");
     break;
   case UNOEXP:
     print_unop(ptr->fields.unoexp.op);
@@ -187,16 +228,54 @@ void print_exp(Exp ptr) {
 /* Pretty-print a statement
  */
 void print_stm(Stm ptr) {
+  if(ptr == NULL) return;
   switch(ptr->stm_t) {
   case ASSIGNSTM:
     printf("%s", ptr->fields.assign.ident);
-    printf("=");
+    printf(" := ");
     print_exp(ptr->fields.assign.exp);
     printf("; ");
     break;
   case COMPOUNDSTM:
     print_stm(ptr->fields.compound.fst);
     print_stm(ptr->fields.compound.snd);
+    break;
+  case IFSTM:
+    printf("if ");
+    print_exp(ptr->fields.ifstm.cond);
+    printf(" then ");
+    print_stm(ptr->fields.ifstm.then_branch);
+    if(ptr->fields.ifstm.else_branch != NULL){
+      printf(" else ");
+      print_stm(ptr->fields.ifstm.else_branch);
+    }
+    printf(" end if;");
+    break;
+  case WHILESTM:
+    printf("while ");
+    print_exp(ptr->fields.whilestm.cond);
+    printf(" loop ");
+    print_stm(ptr->fields.whilestm.branch);
+    printf(" end loop;");
+    break;
+  case PUTSTM:
+    printf("put_line(");
+    print_exp(ptr->fields.putstm.output);
+    printf(");");
+    break;
+  case GETSTM:
+    printf("get_line(");
+    printf("%s", ptr->fields.getstm.ident);
+    printf(");");
+    break;
+  case PROCSTM:
+    printf("Procedure Main is ");
+    printf("begin ");
+    print_stm(ptr->fields.proc.statements);
+    printf(" end Main;");
+    break;
+  default:
+    fprintf(stderr, "print_stm: unknown StmType %d\n", ptr->stm_t);
     break;
   }
 }

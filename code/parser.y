@@ -5,7 +5,7 @@
 #include "ast.h"
 int yylex (void);
 void yyerror (char const *);
-Exp root = null;
+Stm root = NULL;
 %}
 %union { /* used in bison, defines type of yylval and the semantic values passed between rules */
    int i_val;
@@ -35,7 +35,7 @@ Exp root = null;
 %token <s_val> STRING_LITERAL
 %token <i_val> NUM
 /* IO */
-%token PUT GET /* put_line get_line ? */
+%token PUT_LINE GET_LINE /* put_line get_line ? */
 /* Control Flow */
 %token IF THEN ELSE /* if A then B else C */
 %token WHILE LOOP END /* while A loop end */
@@ -59,15 +59,14 @@ Exp root = null;
 %right UNARY_MINUS
 
 %start top
-
-%type <proc_node> top
+%type <stm_node> top
 %type <exp_node> expr /* expression */
 %type <stm_node> stm /* statement */
-%type <proc_node> proc /* procedure */
-%type <stm_list_node> stm_list /* stm_list */
+%type <stm_node> proc /* procedure */
+%type <stm_node> stm_list /* stm_list */
 %%
 /* Regras de produção  */
-top: proc {printf(root = $1);} /* return AST root -> Main Procedure */
+top: proc {root = $1;} /* return AST root -> Main Procedure */
 ;
 
 expr:
@@ -96,17 +95,18 @@ expr:
    | NOT expr {$$ = mk_unoexp(NOTexp, $2);}
    ;
 
-proc: PROCEDURE MAIN IS BEGIN stm_list END MAIN SEMICOLON {};
+proc: PROCEDURE MAIN IS BEGIN stm_list END MAIN SEMICOLON {$$ = mk_proc($5);};
 
-stm_list: stm {}
-   | stm stm {}
+stm_list: 
+   stm_list stm { $$ = ($1 ? mk_compound($1, $2) : $2);}
+   |/* empty */ {$$ = NULL;}
    ;
 
-stm: ID ASSIGN expr SEMICOLON {$$ = mk_assign($1, $3);};
-   | IF expr THEN stm_list ELSE stm_list END IF SEMICOLON {}
-   | WHILE expr LOOP stm_list END LOOP SEMICOLON {}
-   | PUT expr SEMICOLON {}
-   | GET ID SEMICOLON {}
+stm: ID ASSIGN expr SEMICOLON {$$ = mk_assign($1, $3);}
+   | IF expr THEN stm_list ELSE stm_list END IF SEMICOLON {$$ = ($6 ? mk_if($2, $4, $6) : mk_if($2, $4, NULL));}
+   | WHILE expr LOOP stm_list END LOOP SEMICOLON {$$ = mk_while($2, $4);}
+   | PUT_LINE expr SEMICOLON {$$ = put_line($2);}
+   | GET_LINE ID SEMICOLON {$$ = get_line($2);}
    ;
 
 
