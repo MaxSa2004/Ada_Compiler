@@ -5,73 +5,92 @@
 #include "ast.h"
 int yylex (void);
 void yyerror (char const *);
+Exp root = null;
 %}
-%union {
+%union { /* used in bison, defines type of yylval and the semantic values passed between rules */
    int i_val;
-   char* s_val;
+   char* s_val; /* for both ID and STRING_LITERAL */
    Exp exp_node;
    Stm stm_node;
    BinOp op_type;
 }
 
 /* Tokens */
--- Expressions
-%%token PLUS MINUS -- + -
-%%token MULT DIV -- * /
-%%token LPAREN RPAREN -- ()
-%%token EQ INEQ -- = /=
-%%token OR -- or
-%%token AND  -- and
-%%token XOR -- xor
-%%token LESS GREATER -- < >
-%%token LEQ GEQ -- <= >=
-%%token MOD REM -- mod rem
-%%token ASSIGN -- :=
--- Literals
-%%token <s_val> ID
-%%token TRUE FALSE -- true false
-%%token STRING_LITERAL
-%%token <i_val> NUM
--- IO
-%%token PUT GET -- put_line get_line ?
--- Control Flow
-%%token IF THEN ELSE -- if A then B else C
-%%token WHILE LOOP END -- while A loop end
--- Basic Types
-%%token INTEGER
-%%token BOOLEAN
-%%token STRING
--- Procedure
-%%token MAIN
--- Precendence
-%%left PLUS MINUS
-%%left MULT DIV MOD REM
+/* Expressions */
+%token PLUS MINUS /* + - */
+%token MULT DIV /* * / */
+%token LPAREN RPAREN /* () */
+%token EQ INEQ /* = /= */
+%token OR /* or */
+%token AND  /* and */
+%token XOR /* xor */
+%token LESS GREATER /* < > */
+%token LEQ GEQ /* <= >= */
+%token MOD REM /* mod rem */
+%token ASSIGN /* := */
+%token NOT
+/* Literals */
+%token <s_val> ID
+%token TRUE FALSE /* true false */
+%token <s_val> STRING_LITERAL
+%token <i_val> NUM
+/* IO */
+%token PUT GET /* put_line get_line ? */
+/* Control Flow */
+%token IF THEN ELSE /* if A then B else C */
+%token WHILE LOOP END /* while A loop end */
+/* Basic Types */
+%token INTEGER
+%token BOOLEAN
+%token STRING
+%token SEMICOLON
+/* Procedure */
+%token MAIN
+%token BEGIN
+%token PROCEDURE
+/* Precendence */
+%left OR XOR
+%left AND
+%nonassoc EQ INEQ LESS GREATER LEQ GEQ
+%left PLUS MINUS
+%left MULT DIV MOD REM
+%right NOT 
+%right UNARY_MINUS
 
-%type <exp_node> expr -- expression
-%type <stm_node> stm -- statement
+%start top
+
+%type <exp_node> top
+%type <exp_node> expr /* expression */
+%type <stm_node> stm /* statement */
 %%
--- Regras de produção 
-top: expr {printf("%d\n", $1);}
+/* Regras de produção  */
+top: expr {printf(root = $1);} /* return AST root -> Main Procedure */
 ;
 
 expr:
-   NUM 
-   | expr PLUS expr {$$ = $1 + $3;}
-   | expr MINUS expr {$$ = $1 - $3;}
-   | expr MULT expr {$$ = $1 * $3;}
-   | expr DIV expr {$$ = $1 / $3;}
+   NUM {$$ = mk_numexp($1);}
+   | ID {$$ = mk_idexp($1);}
+   | TRUE {$$ = mk_boolexp(1);}
+   | FALSE {$$ = mk_boolexp(0);}
+   | STRING_LITERAL {$$ = mk_strexp($1);}
+   | expr PLUS expr {$$ = mk_opexp($1, SUM, $3);}
+   | expr MINUS expr {$$ = mk_opexp($1, SUB, $3);}
+   | expr MULT expr {$$ = mk_opexp($1, TIMES, $3);}
+   | expr DIV expr {$$ = mk_opexp($1, DIVISION, $3);}
    | LPAREN expr RPAREN {$$ = $2;}
-   | expr EQ expr {$$ = $1 == $3;}
-   | expr INEQ expr {$$ = $1 != $3;}
-   | expr OR expr {$$ = $1 || $3;}
-   | expr AND expr {$$ = $1 && $3;}
-   | expr XOR expr {$$ = $1 ^ $3;}
-   | expr LESS expr {$$ = $1 < $3;}
-   | expr GREATER expr {$$ = $1 > $3;}
-   | expr LEQ expr {$$ = $1 <= $3;}
-   | expr GEQ expr {$$ = $1 >= $3;}
-   | expr MOD expr {$$ = ($1 % $3 + $3) + $3;}
-   | expr REM expr {$$ = $1 % $3;}
+   | expr EQ expr {$$ = mk_opexp($1, EQUAL, $3);}
+   | expr INEQ expr {$$ = mk_opexp($1, INEQUAL, $3);}
+   | expr OR expr {$$ = mk_opexp($1, ORexp, $3);}
+   | expr AND expr {$$ = mk_opexp($1, ANDexp, $3);}
+   | expr XOR expr {$$ = mk_opexp($1, XORexp, $3);}
+   | expr LESS expr {$$ = mk_opexp($1, LESSexp, $3);}
+   | expr GREATER expr {$$ = mk_opexp($1, GREATERexp, $3);}
+   | expr LEQ expr {$$ = mk_opexp($1, LEQexp, $3);}
+   | expr GEQ expr {$$ = mk_opexp($1, GEQexp, $3);}
+   | expr MOD expr {$$ = mk_opexp($1, MODULUS, $3);}
+   | expr REM expr {$$ = mk_opexp($1, REMAINDER, $3);}
+   | MINUS expr %prec UNARY_MINUS {}
+   | NOT expr {}
    ;
 
 stm: ID ASSIGN expr {$$ = mk_assign($1, $3);};
@@ -80,7 +99,7 @@ stm: ID ASSIGN expr {$$ = mk_assign($1, $3);};
 
 %%
 
--- Código C adicional (erro)
+/* Código C adicional (erro) */
 void yyerror(char const *msg) {
    printf("parse error: %s\n", msg);
    exit(-1);

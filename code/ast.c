@@ -6,6 +6,7 @@
 
 /* Construct expressions
  */
+/* make number */
 Exp mk_numexp(int num)
 {
   Exp ptr = malloc(sizeof(struct _Exp));
@@ -13,7 +14,7 @@ Exp mk_numexp(int num)
   ptr->fields.num = num;
   return ptr;
 }
-
+/* make id */
 Exp mk_idexp(char *ident)
 {
   Exp ptr = malloc(sizeof(struct _Exp));
@@ -21,7 +22,21 @@ Exp mk_idexp(char *ident)
   ptr->fields.ident = ident;
   return ptr;
 }
-
+/* make string */
+Exp mk_strexp(char* string){
+  Exp ptr = malloc(sizeof(struct _Exp));
+  ptr->exp_t = STREXP;
+  ptr->fields.string = string;
+  return ptr;
+}
+/* make boolean */
+Exp mk_boolexp(int bool){
+  Exp ptr = malloc(sizeof(struct _Exp));
+  ptr->exp_t = BOOLEXP;
+  ptr->fields.boolVal = bool;
+  return ptr;
+}
+/* make operation */
 Exp mk_opexp(Exp left, BinOp op, Exp right)
 {
   Exp ptr = malloc(sizeof(struct _Exp));
@@ -42,12 +57,6 @@ Stm mk_assign(char *ident, Exp exp) {
   return ptr;
 }
 
-Stm mk_incr(char *ident) {
-  Stm ptr = malloc(sizeof(struct _Stm));
-  ptr->stm_t = INCRSTM;
-  ptr->fields.incr = ident;
-  return ptr;
-}
 
 Stm mk_compound(Stm fst, Stm snd) {
   Stm ptr = malloc(sizeof(struct _Stm));
@@ -62,22 +71,58 @@ Stm mk_compound(Stm fst, Stm snd) {
  */
 void print_op(BinOp op) {
   switch(op) {
-  case PLUS:
+  case SUM:
     printf("+");
     break;
-  case MINUS:
+  case SUB:
     printf("-");
     break;
   case TIMES:
     printf("*");
     break;
-  case DIV:
+  case DIVISION:
     printf("/");
     break;
-  }              
+  case EQUAL:
+    printf("=");
+    break;
+  case INEQUAL:
+    printf("/=");
+    break;
+  case ORexp:
+    printf("or");
+    break;
+  case ANDexp:
+    printf("and");
+    break;
+  case XORexp:
+    printf("xor");
+    break;
+  case LESSexp:
+    printf("<");
+    break;
+  case GREATERexp:
+    printf(">");
+    break;
+  case LEQexp:
+    printf("<=");
+    break;
+  case GEQexp:
+    printf(">=");
+    break;
+  case MODULUS:
+    printf("mod");
+    break;
+  case REMAINDER:
+    printf("rem");
+    break;
+  }
+
+                
 }
 
 void print_exp(Exp ptr) {
+  if(ptr == NULL) return;
   switch (ptr->exp_t) {
   case NUMEXP:
     printf("%d", ptr->fields.num);
@@ -92,6 +137,19 @@ void print_exp(Exp ptr) {
     print_exp(ptr->fields.opexp.right);
     printf(")");
     break;
+  case STREXP:
+    printf("%s", ptr->fields.string);
+    break;
+  case BOOLEXP:
+    if(ptr->fields.boolVal == 0){
+      printf("false");
+    } else {
+      printf("true");
+    }
+    break;
+  default:
+    fprintf(stderr, "print_exp: unknown ExpType %d\n", ptr->exp_t);
+    break;
   }
 }
 
@@ -103,10 +161,6 @@ void print_stm(Stm ptr) {
     printf("%s", ptr->fields.assign.ident);
     printf("=");
     print_exp(ptr->fields.assign.exp);
-    printf("; ");
-    break;
-  case INCRSTM:
-    printf("%s++", ptr->fields.incr);
     printf("; ");
     break;
   case COMPOUNDSTM:
