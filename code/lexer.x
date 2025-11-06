@@ -1,7 +1,9 @@
 /* Analisador Lexical Flex */
 %{
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /* includes token definitions from parser */
 #include "parser.tab.h"
@@ -21,6 +23,10 @@ static char *unend_ada_string_quotes(const char *s){
 
     /* worst possible length is len, so allocate memory for worst case */
     char *out = malloc(len);
+    if(!out){
+        perror("malloc");
+        exit(1);
+    }
 
     char *q = out;
     while (p < end) {
@@ -35,6 +41,16 @@ static char *unend_ada_string_quotes(const char *s){
     
     *q = '\0'; /* end of string */
     return out;
+}
+
+/* helper to make lowercase */
+static void toLowerCase(char *s){
+    int i = 0;
+
+    while (s[i] != '\0'){
+        s[i] = (char)tolower((unsigned char)s[i]);
+        i++;
+    }
 }
 
 /* create a custom structure to store keywords of ada */
@@ -91,17 +107,6 @@ STRING          \"{STRING_CHARS}*\"
 
 "--".*          { /* skip the comments */ ; }
 
-/*  */
-{STRING}        {
-                    yylval.s_val = unend_ada_string_quotes(yytext);
-                    return STRING_LITERAL;
-                }
-
-{DIGIT}+        {
-                    yylval.i_val = atoi(yytext);
-                    return NUM;
-                }
-
 /* operator symbols */
 ":="            { return ASSIGN; }
 "/="            { return INEQ; }
@@ -118,8 +123,39 @@ STRING          \"{STRING_CHARS}*\"
 ")"             { return RPAREN; }
 ";"             { return SEMICOLON; }
 
+/* string, numbers and ids */
+{STRING}        {
+                    yylval.s_val = unend_ada_string_quotes(yytext);
+                    return STRING_LITERAL;
+                }
+
+{DIGIT}+        {
+                    yylval.i_val = atoi(yytext);
+                    return NUM;
+                }
+
 {IDENT}         {
+                    /* lowercase duplicate for keyword comparisons */
+                    char *s = strdup(yytext);
+                    toLowerCase(s);
                     
+                    /*check for keywords */
+                    for(keyword_tokens *kw = keywords; kw->name; ++kw){
+                        if(strcmp(s,kw->name) == 0){
+                            free(s);
+                            return kw->token;
+                        }
+                    }
+
+                    /*otherwise it is an identifier*/
+                    yylval.s_val = strdup(yytext); /*keep original case and not lowered case*/
+                    free(s);
+                    return ID;
+                }
+
+/*anything else not recognised is warned to user*/
+.               {
+                    fprintf(stderr, "lexer error: unexpected character '%s' (line: %d)\n", yytext, yylineno);
                 }
 
 %%
