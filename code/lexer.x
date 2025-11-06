@@ -129,8 +129,8 @@ STRING          \"{STRING_CHARS}*\"
                         return STRING_LITERAL;
                     }
 
-/*floats*/
-{DIGIT}+"."{DIGIT}+ {
+/*floats supported: (.14) (0.14) (42.) (3.14) */
+({DIGIT}+"."{DIGIT}* | "."{DIGIT}+) {
                         yylval.f_val = atof(yytext);
                         return FLOAT;
                     }
