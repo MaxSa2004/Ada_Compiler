@@ -1,24 +1,31 @@
+CC = gcc
+CFLAGS = -Wall -g
+BISON = bison
+FLEX = flex
 
-OBJS=scanner.o parser.o ast.o interpreter.o
-INTERM=scanner.c parser.c parser.h
-PROGRAM=./interpreter
-CFLAGS=-g 
+SRCS = main.c ast.c
+PARSER_SRC = parser.y
+LEXER_SRC = lexer.x
 
-all: $(PROGRAM)
+EXEC = ada  
+
+all: $(EXEC)
 
 scanner.c: scanner.flex parser.h
 	flex -o scanner.c scanner.flex
 
-parser.c parser.h: parser.bison
-	bison --defines=parser.h -o parser.c parser.bison
+parser.tabc parser.tab.h: $(PARSER_SRC)
+	b$(BISON) -d $(PARSER_SRC)
 
-$(PROGRAM): $(OBJS)
-	$(CC) -o $(PROGRAM) $(OBJS)
+lex.yy.c: $(LEXER_SRC) parser.tab.h
+	$(FLEX) $(LEXER_SRC)
+
+$(EXEC): parser.tab.c lex.yy.c $(SRCS)
+	$(CC) $(CFLAGS) -o $(EXEC) parcer.tab.c lex.yy.c ast.c main.c -lfl -lm
 clean:
-	rm -f $(PROGRAM) $(OBJS) $(INTERM)
+	rm -f $(EXEC) parser.tab.c parser.tab.h lex.yy.c tests/actual/*.out
 
-test: $(PROGRAM)
-	$(PROGRAM) example1.txt
-	$(PROGRAM) example2.txt
-	$(PROGRAM) example3.txt
-	$(PROGRAM) example4.txt
+test: $(EXEC)
+	./run_tests.sh
+
+.PHONY: all test clean

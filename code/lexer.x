@@ -6,6 +6,7 @@
 #include <ctype.h>
 
 /* includes token definitions from parser */
+#include "ast.h"
 #include "parser.tab.h"
 
 /* expose yylval produced by bison */
@@ -88,7 +89,7 @@ static keyword_tokens keywords[] = {
 
 %}
 
-// flex options
+/* flex options*/
 %option noyywrap
 %option yylineno
 
@@ -97,17 +98,17 @@ DIGIT           [0-9]
 IDENT_START     [A-Za-z]  /* Starting chars allowed for identifiers*/
 IDENT_REST      [A-Za-z0-9_] /* rest of chars allowed*/
 IDENT           {IDENT_START}{IDENT_REST}*
-STRING_CHARS    ([^"\n]|"") /* anything except double quote or newline */
+STRING_CHARS    ([^\"\n]|\"\") /* anything except double quote or newline */
 STRING          \"{STRING_CHARS}*\"
 
 
 %%
-/* expressões regulares e ações */
+
 [ \t\r\n]+      /* skip whitespace */
 
 "--".*          { /* skip the comments */ ; }
 
-/* operator symbols */
+
 ":="            { return ASSIGN; }
 "/="            { return INEQ; }
 "="             { return EQ; }
@@ -123,13 +124,12 @@ STRING          \"{STRING_CHARS}*\"
 ")"             { return RPAREN; }
 ";"             { return SEMICOLON; }
 
-/* string, numbers and ids */
 {STRING}            {
                         yylval.s_val = unend_ada_string_quotes(yytext);
                         return STRING_LITERAL;
                     }
 
-/*floats supported: (.14) (0.14) (42.) (3.14) */
+
 ({DIGIT}+"."{DIGIT}* | "."{DIGIT}+) {
                         yylval.f_val = atof(yytext);
                         return FLOAT;
@@ -159,7 +159,6 @@ STRING          \"{STRING_CHARS}*\"
                         return ID;
                     }
 
-/*anything else not recognised is warned to user*/
 .                   {
                         fprintf(stderr, "lexer error: unexpected character '%s' (line: %d)\n", yytext, yylineno);
                     }
