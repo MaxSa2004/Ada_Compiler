@@ -124,38 +124,43 @@ STRING          \"{STRING_CHARS}*\"
 ";"             { return SEMICOLON; }
 
 /* string, numbers and ids */
-{STRING}        {
-                    yylval.s_val = unend_ada_string_quotes(yytext);
-                    return STRING_LITERAL;
-                }
-
-{DIGIT}+        {
-                    yylval.i_val = atoi(yytext);
-                    return NUM;
-                }
-
-{IDENT}         {
-                    /* lowercase duplicate for keyword comparisons */
-                    char *s = strdup(yytext);
-                    toLowerCase(s);
-                    
-                    /*check for keywords */
-                    for(keyword_tokens *kw = keywords; kw->name; ++kw){
-                        if(strcmp(s,kw->name) == 0){
-                            free(s);
-                            return kw->token;
-                        }
+{STRING}            {
+                        yylval.s_val = unend_ada_string_quotes(yytext);
+                        return STRING_LITERAL;
                     }
 
-                    /*otherwise it is an identifier*/
-                    yylval.s_val = strdup(yytext); /*keep original case and not lowered case*/
-                    free(s);
-                    return ID;
-                }
+/*floats*/
+{DIGIT}."+"{DIGIT}+ {
+                        yylval.f_val = atof(yytext);
+                    }
+
+{DIGIT}+            {
+                        yylval.i_val = atoi(yytext);
+                        return NUM;
+                    }
+
+{IDENT}             {
+                        /* lowercase duplicate for keyword comparisons */
+                        char *s = strdup(yytext);
+                        toLowerCase(s);
+                        
+                        /*check for keywords */
+                        for(keyword_tokens *kw = keywords; kw->name; ++kw){
+                            if(strcmp(s,kw->name) == 0){
+                                free(s);
+                                return kw->token;
+                            }
+                        }
+
+                        /*otherwise it is an identifier*/
+                        yylval.s_val = strdup(yytext); /*keep original case and not lowered case*/
+                        free(s);
+                        return ID;
+                    }
 
 /*anything else not recognised is warned to user*/
-.               {
-                    fprintf(stderr, "lexer error: unexpected character '%s' (line: %d)\n", yytext, yylineno);
-                }
+.                   {
+                        fprintf(stderr, "lexer error: unexpected character '%s' (line: %d)\n", yytext, yylineno);
+                    }
 
 %%
