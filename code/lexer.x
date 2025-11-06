@@ -12,9 +12,9 @@
 /* expose yylval produced by bison */
 extern YYSTYPE yylval;
 
-/* helper to allow double quotes inside strings (like Ada does): example of string "he says "hello" to me" */
-/* s points to the entire matched string including surrounding quotes */
-/* p is inout cursor and q is output cursor */
+/* helper to allow double quotes inside strings (like Ada does): example of string "he says "hello" to me"
+ s points to the entire matched string including surrounding quotes
+ p is inout cursor and q is output cursor */
 static char *unend_ada_string_quotes(const char *s){
     size_t len = strlen(s);
 
@@ -95,16 +95,16 @@ static keyword_tokens keywords[] = {
 
 /* Declarations */ 
 DIGIT           [0-9]
-IDENT_START     [A-Za-z]  /* Starting chars allowed for identifiers*/
-IDENT_REST      [A-Za-z0-9_] /* rest of chars allowed*/
+IDENT_START     [A-Za-z]
+IDENT_REST      [A-Za-z0-9_]
 IDENT           {IDENT_START}{IDENT_REST}*
-STRING_CHARS    ([^\"\n]|\"\") /* anything except double quote or newline */
+STRING_CHARS    ([^\"\n]|\"\")
 STRING          \"{STRING_CHARS}*\"
 
 
 %%
 
-[ \t\r\n]+      /* skip whitespace */
+[ \t\r\n]+     { /* skip whitespace */}
 
 "--".*          { /* skip the comments */ ; }
 
@@ -130,7 +130,12 @@ STRING          \"{STRING_CHARS}*\"
                     }
 
 
-({DIGIT}+"."{DIGIT}* | "."{DIGIT}+) {
+{DIGIT}+\.{DIGIT}*  {
+                        yylval.f_val = atof(yytext);
+                        return FLOAT;
+                    }
+
+\.{DIGIT}+          {
                         yylval.f_val = atof(yytext);
                         return FLOAT;
                     }
