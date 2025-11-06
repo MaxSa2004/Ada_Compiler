@@ -130,7 +130,7 @@ STRING          \"{STRING_CHARS}*\"
                     }
 
 /*floats*/
-{DIGIT}."+"{DIGIT}+ {
+{DIGIT}+"."{DIGIT}+ {
                         yylval.f_val = atof(yytext);
                         return FLOAT;
                     }
