@@ -14,6 +14,13 @@ Exp mk_numexp(int num)
   ptr->fields.num = num;
   return ptr;
 }
+/* make float*/
+Exp mk_floatexp(float num){
+  Exp ptr = malloc(sizeof(struct _Exp));
+  ptr->exp_t = FLOATEXP;
+  ptr->fields.fnum = num;
+  return ptr;
+}
 /* make id */
 Exp mk_idexp(char *ident)
 {
@@ -198,6 +205,9 @@ void print_exp(Exp ptr) {
   switch (ptr->exp_t) {
   case NUMEXP:
     printf("%d", ptr->fields.num);
+    break;
+  case FLOATEXP:
+    printf("%f", (double) ptr->fields.fnum);
     break;
   case IDEXP:
     printf("%s", ptr->fields.ident);

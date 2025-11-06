@@ -9,6 +9,7 @@ Stm root = NULL;
 %}
 %union { /* used in bison, defines type of yylval and the semantic values passed between rules */
    int i_val;
+   float f_val;
    char* s_val; /* for both ID and STRING_LITERAL */
    Exp exp_node;
    Stm stm_node;
@@ -34,6 +35,7 @@ Stm root = NULL;
 %token TRUE FALSE /* true false */
 %token <s_val> STRING_LITERAL
 %token <i_val> NUM
+%token <f_val> FLOAT
 /* IO */
 %token PUT_LINE GET_LINE /* put_line get_line ? */
 /* Control Flow */
@@ -71,6 +73,7 @@ top: proc {root = $1;} /* return AST root -> Main Procedure */
 
 expr:
    NUM {$$ = mk_numexp($1);}
+   | FLOAT {$$ = mk_floatexp($1);}
    | ID {$$ = mk_idexp($1);}
    | TRUE {$$ = mk_boolexp(1);}
    | FALSE {$$ = mk_boolexp(0);}
@@ -108,10 +111,6 @@ stm: ID ASSIGN expr SEMICOLON {$$ = mk_assign($1, $3);}
    | PUT_LINE expr SEMICOLON {$$ = put_line($2);}
    | GET_LINE ID SEMICOLON {$$ = get_line($2);}
    ;
-
-
-
-
 %%
 
 /* Código C adicional (erro) */

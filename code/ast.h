@@ -6,7 +6,7 @@ typedef enum { SUM, SUB, TIMES, DIVISION, EQUAL, INEQUAL, ORexp, ANDexp, XORexp,
 typedef enum {NOTexp, UMINUS}
   UnOp;
 
-typedef enum { IDEXP, NUMEXP, OPEXP, STREXP, BOOLEXP, UNOEXP }
+typedef enum { IDEXP, NUMEXP, OPEXP, STREXP, BOOLEXP, UNOEXP, FLOATEXP }
   ExpType;
 
 struct _Exp {
@@ -15,6 +15,7 @@ struct _Exp {
     char *ident;    // IDEXP
     char *string; // STREXP
     int num;        // NUMEXP
+    float fnum;     //FLOATEXP
     int boolVal; // BOOLEXP
     struct {   
       struct _Exp *left;
@@ -82,6 +83,7 @@ extern Stm mk_proc(Stm);
 
 extern Exp mk_opexp(Exp, BinOp, Exp);
 extern Exp mk_numexp(int);
+extern Exp mk_floatexp(float);
 extern Exp mk_idexp(char *);
 extern Exp mk_strexp(char *);
 extern Exp mk_boolexp(int);
