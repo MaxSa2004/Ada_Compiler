@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* includes token definitions from parser */
 #include "parser.tab.h"
 
 /* expose yylval produced by bison */
@@ -32,9 +33,42 @@ static char *unend_ada_string_quotes(const char *s){
         
     }
     
-    *q = '\0';
+    *q = '\0'; /* end of string */
     return out;
 }
+
+/* create a custom structure to store keywords of ada */
+typedef struct {
+    const char *name;
+    int token;
+} keyword_tokens;
+
+static keyword_tokens keywords[] = {
+    {"main", MAIN},
+    {"begin", BEGIN},
+    {"procedure", PROCEDURE},
+    {"is", IS},
+    {"if", IF},
+    {"then", THEN},
+    {"else", ELSE},
+    {"while", WHILE},
+    {"loop", LOOP},
+    {"end", END},
+    {"put_line", PUT_LINE},
+    {"get_line", GET_LINE},
+    {"true", TRUE},
+    {"false", FALSE},
+    {"integer", INTEGER},
+    {"boolean", BOOLEAN},
+    {"string", STRING},
+    {"or", OR},
+    {"xor", XOR},
+    {"and", AND},
+    {"not", NOT},
+    {"mod", MOD},
+    {"rem", REM},
+    {NULL, 0}
+};
 
 %}
 
@@ -68,6 +102,24 @@ STRING          \"{STRING_CHARS}*\"
                     return NUM;
                 }
 
+/* operator symbols */
+":="            { return ASSIGN; }
+"/="            { return INEQ; }
+"="             { return EQ; }
+"<="            { return LEQ; }
+">="            { return GEQ; }
+"<"             { return LESS; }
+">"             { return GREATER; }
+"+"             { return PLUS; }
+"-"             { return MINUS; }
+"*"             { return MULT; }
+"/"             { return DIV; }
+"("             { return LPAREN; }
+")"             { return RPAREN; }
+";"             { return SEMICOLON; }
 
+{IDENT}         {
+                    
+                }
 
 %%
