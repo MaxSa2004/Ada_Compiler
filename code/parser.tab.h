@@ -92,11 +92,10 @@ extern int yydebug;
     BOOLEAN = 293,                 /* BOOLEAN  */
     STRING = 294,                  /* STRING  */
     SEMICOLON = 295,               /* SEMICOLON  */
-    MAIN = 296,                    /* MAIN  */
-    BEGIN_T = 297,                 /* BEGIN_T  */
-    PROCEDURE = 298,               /* PROCEDURE  */
-    IS = 299,                      /* IS  */
-    UNARY_MINUS = 300              /* UNARY_MINUS  */
+    BEGIN_T = 296,                 /* BEGIN_T  */
+    PROCEDURE = 297,               /* PROCEDURE  */
+    IS = 298,                      /* IS  */
+    UNARY_MINUS = 299              /* UNARY_MINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -114,7 +113,7 @@ union YYSTYPE
    Stm stm_node;
    BinOp op_type;
 
-#line 118 "parser.tab.h"
+#line 117 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -564,7 +564,6 @@ typedef struct {
 } keyword_tokens;
 
 static keyword_tokens keywords[] = {
-    {"main", MAIN},
     {"begin", BEGIN_T},
     {"procedure", PROCEDURE},
     {"is", IS},
@@ -590,10 +589,10 @@ static keyword_tokens keywords[] = {
     {NULL, 0}
 };
 
-#line 593 "lex.yy.c"
+#line 592 "lex.yy.c"
 /* flex options*/
 /* Declarations */ 
-#line 596 "lex.yy.c"
+#line 595 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -810,10 +809,10 @@ YY_DECL
 		}
 
 	{
-#line 107 "lexer.x"
+#line 106 "lexer.x"
 
 
-#line 816 "lex.yy.c"
+#line 815 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -883,92 +882,92 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 109 "lexer.x"
+#line 108 "lexer.x"
 { /* skip whitespace */}
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 111 "lexer.x"
+#line 110 "lexer.x"
 { /* skip the comments */ ; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 114 "lexer.x"
+#line 113 "lexer.x"
 { return ASSIGN; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 115 "lexer.x"
+#line 114 "lexer.x"
 { return INEQ; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 116 "lexer.x"
+#line 115 "lexer.x"
 { return EQ; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 117 "lexer.x"
+#line 116 "lexer.x"
 { return LEQ; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 118 "lexer.x"
+#line 117 "lexer.x"
 { return GEQ; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 119 "lexer.x"
+#line 118 "lexer.x"
 { return LESS; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 120 "lexer.x"
+#line 119 "lexer.x"
 { return GREATER; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 121 "lexer.x"
+#line 120 "lexer.x"
 { return PLUS; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 122 "lexer.x"
+#line 121 "lexer.x"
 { return MINUS; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 123 "lexer.x"
+#line 122 "lexer.x"
 { return POWER; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 124 "lexer.x"
+#line 123 "lexer.x"
 { return MULT; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 125 "lexer.x"
+#line 124 "lexer.x"
 { return DIV; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 126 "lexer.x"
+#line 125 "lexer.x"
 { return LPAREN; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 127 "lexer.x"
+#line 126 "lexer.x"
 { return RPAREN; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 128 "lexer.x"
+#line 127 "lexer.x"
 { return SEMICOLON; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 130 "lexer.x"
+#line 129 "lexer.x"
 {
                         yylval.s_val = unend_ada_string_quotes(yytext);
                         return STRING_LITERAL;
@@ -976,7 +975,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 135 "lexer.x"
+#line 134 "lexer.x"
 {
                         yylval.f_val = strtof(yytext, NULL);
                         return FLOAT;
@@ -984,7 +983,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 140 "lexer.x"
+#line 139 "lexer.x"
 {
                         yylval.i_val = atoi(yytext);
                         return NUM;
@@ -992,7 +991,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 145 "lexer.x"
+#line 144 "lexer.x"
 {
                         /* lowercase duplicate for keyword comparisons */
                         char *s = strdup(yytext);
@@ -1014,17 +1013,17 @@ YY_RULE_SETUP
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 164 "lexer.x"
+#line 163 "lexer.x"
 {
                         fprintf(stderr, "lexer error: unexpected character '%s' (line: %d)\n", yytext, yylineno);
                     }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 168 "lexer.x"
+#line 167 "lexer.x"
 ECHO;
 	YY_BREAK
-#line 1027 "lex.yy.c"
+#line 1026 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2041,5 +2040,5 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 168 "lexer.x"
+#line 167 "lexer.x"
 

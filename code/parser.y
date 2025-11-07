@@ -48,7 +48,6 @@ Stm root = NULL;
 %token STRING
 %token SEMICOLON
 /* Procedure */
-%token MAIN
 %token BEGIN_T
 %token PROCEDURE
 %token IS
@@ -101,7 +100,7 @@ expr:
    | NOT expr {$$ = mk_unoexp(NOTexp, $2);}
    ;
 
-proc: PROCEDURE MAIN IS BEGIN_T stm_list END MAIN SEMICOLON {$$ = mk_proc($5);};
+proc: PROCEDURE ID IS BEGIN_T stm_list END ID SEMICOLON {$$ = mk_proc($5);};
 
 stm_list: 
    stm_list stm { $$ = ($1 ? mk_compound($1, $2) : $2);}
@@ -109,7 +108,8 @@ stm_list:
    ;
 
 stm: ID ASSIGN expr SEMICOLON {$$ = mk_assign($1, $3);}
-   | IF expr THEN stm_list ELSE stm_list END IF SEMICOLON {$$ = ($6 ? mk_if($2, $4, $6) : mk_if($2, $4, NULL));}
+   | IF expr THEN stm_list ELSE stm_list END IF SEMICOLON {$$ = mk_if($2, $4, $6);}
+   | IF expr THEN stm_list END IF SEMICOLON {$$ = mk_if($2, $4, NULL);}
    | WHILE expr LOOP stm_list END LOOP SEMICOLON {$$ = mk_while($2, $4);}
    | PUT_LINE expr SEMICOLON {$$ = put_line($2);}
    | GET_LINE ID SEMICOLON {$$ = get_line($2);}

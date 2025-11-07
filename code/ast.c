@@ -132,6 +132,20 @@ Stm mk_proc(Stm statements)
 
 /* Pretty-Print an expression
  */
+
+static void print_ada_string(const char *s){
+  putchar('"');
+  for(; *s; ++s){
+    if(*s == '"'){
+      putchar('"');
+      putchar('"');
+    } else {
+      putchar(*s);
+    }
+  }
+  putchar('"');
+}
+
 void print_op(BinOp op) {
   switch(op) {
   case SUM:
@@ -156,13 +170,13 @@ void print_op(BinOp op) {
     printf("/=");
     break;
   case ORexp:
-    printf(" or ");
+    printf(" OR ");
     break;
   case ANDexp:
-    printf(" and ");
+    printf(" AND ");
     break;
   case XORexp:
-    printf(" xor ");
+    printf(" XOR ");
     break;
   case LESSexp:
     printf("<");
@@ -177,10 +191,10 @@ void print_op(BinOp op) {
     printf(">=");
     break;
   case MODULUS:
-    printf(" mod ");
+    printf(" MOD ");
     break;
   case REMAINDER:
-    printf(" rem ");
+    printf(" REM ");
     break;
   default:
     fprintf(stderr, "print_op: unknown Op %d\n", op);
@@ -192,7 +206,7 @@ void print_unop(UnOp op){
   switch (op)
   {
   case NOTexp:
-    printf(" not ");
+    printf(" NOT ");
     break;
   case UMINUS:
     printf("-");
@@ -210,7 +224,7 @@ void print_exp(Exp ptr) {
     printf("%d", ptr->fields.num);
     break;
   case FLOATEXP:
-    printf("%f", (double) ptr->fields.fnum);
+    printf("%g", (double) ptr->fields.fnum);
     break;
   case IDEXP:
     printf("%s", ptr->fields.ident);
@@ -223,10 +237,10 @@ void print_exp(Exp ptr) {
     printf(")");
     break;
   case STREXP:
-    printf("%s", ptr->fields.string);
+    print_ada_string(ptr->fields.string);
     break;
   case BOOLEXP:
-    printf(ptr->fields.boolVal  ? "true" : "false");
+    printf(ptr->fields.boolVal  ? "TRUE" : "FALSE");
     break;
   case UNOEXP:
     print_unop(ptr->fields.unoexp.op);
@@ -254,38 +268,38 @@ void print_stm(Stm ptr) {
     print_stm(ptr->fields.compound.snd);
     break;
   case IFSTM:
-    printf("if ");
+    printf("IF ");
     print_exp(ptr->fields.ifstm.cond);
-    printf(" then ");
+    printf(" THEN ");
     print_stm(ptr->fields.ifstm.then_branch);
     if(ptr->fields.ifstm.else_branch != NULL){
-      printf(" else ");
+      printf(" ELSE ");
       print_stm(ptr->fields.ifstm.else_branch);
     }
-    printf(" end if;");
+    printf(" END IF;");
     break;
   case WHILESTM:
-    printf("while ");
+    printf("WHILE ");
     print_exp(ptr->fields.whilestm.cond);
-    printf(" loop ");
+    printf(" LOOP ");
     print_stm(ptr->fields.whilestm.branch);
-    printf(" end loop;");
+    printf(" END LOOP;");
     break;
   case PUTSTM:
-    printf("put_line(");
+    printf("PUT_LINE(");
     print_exp(ptr->fields.putstm.output);
     printf(");");
     break;
   case GETSTM:
-    printf("get_line(");
+    printf("GET_LINE(");
     printf("%s", ptr->fields.getstm.ident);
     printf(");");
     break;
   case PROCSTM:
-    printf("Procedure Main is ");
-    printf("begin ");
+    printf("PROCEDURE Main IS ");
+    printf("BEGIN ");
     print_stm(ptr->fields.proc.statements);
-    printf(" end Main;");
+    printf(" END Main;");
     break;
   default:
     fprintf(stderr, "print_stm: unknown StmType %d\n", ptr->stm_t);

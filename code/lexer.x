@@ -61,7 +61,6 @@ typedef struct {
 } keyword_tokens;
 
 static keyword_tokens keywords[] = {
-    {"main", MAIN},
     {"begin", BEGIN_T},
     {"procedure", PROCEDURE},
     {"is", IS},
