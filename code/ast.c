@@ -66,6 +66,13 @@ Exp mk_unoexp(UnOp op, Exp child)
   return ptr;
 }
 
+Exp mk_parexp(Exp inner){
+  Exp ptr = malloc(sizeof(struct _Exp));
+  ptr->exp_t = PAREXP;
+  ptr->fields.parexp.inner = inner;
+  return ptr;
+}
+
 /* Construct statements
  */
 Stm mk_assign(char *ident, Exp exp) 
@@ -236,6 +243,11 @@ void print_exp(Exp ptr) {
     print_op(ptr->fields.opexp.op);
     print_exp(ptr->fields.opexp.right);
     break;
+  case PAREXP:
+    printf("(");
+    print_exp(ptr->fields.parexp.inner);
+    printf(") ");
+    break;
   case STREXP:
     print_ada_string(ptr->fields.string);
     break;
@@ -291,8 +303,8 @@ void print_stm(Stm ptr) {
     printf("); ");
     break;
   case GETSTM:
-    printf(" GET_LINE(");
-    printf("%s ", ptr->fields.getstm.ident);
+    printf("GET_LINE(");
+    printf("%s", ptr->fields.getstm.ident);
     printf("); ");
     break;
   case PROCSTM:
@@ -320,6 +332,9 @@ void free_exp(Exp ptr){
   case OPEXP:
     free_exp(ptr->fields.opexp.left);
     free_exp(ptr->fields.opexp.right);
+    break;
+  case PAREXP:
+    free_exp(ptr->fields.parexp.inner);
     break;
   case STREXP:
     if(ptr->fields.string) free(ptr->fields.string);

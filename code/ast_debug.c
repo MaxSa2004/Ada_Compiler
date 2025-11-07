@@ -107,7 +107,7 @@ void debug_print_exp(Exp ptr)
         printf("NUM(%d)", ptr->fields.num);
         break;
     case FLOATEXP:
-        printf("FLOAT(%g ", (double)ptr->fields.fnum);
+        printf("FLOAT(%g)", (double)ptr->fields.fnum);
         break;
     case IDEXP:
         printf("ID(%s)", ptr->fields.ident);
@@ -117,6 +117,11 @@ void debug_print_exp(Exp ptr)
         debug_print_exp(ptr->fields.opexp.left);
         printf(", ");
         debug_print_exp(ptr->fields.opexp.right);
+        printf(")");
+        break;
+    case PAREXP:
+        printf("(");
+        debug_print_exp(ptr->fields.parexp.inner);
         printf(")");
         break;
     case STREXP:
@@ -187,7 +192,7 @@ void debug_print_stm(Stm ptr, int indent)
         debug_print_exp(ptr->fields.whilestm.cond);
         printf("\n");
         pad(indent+2);
-        printf("body: ");
+        printf("body:\n");
         debug_print_stm_list(ptr->fields.whilestm.branch, indent+4);
         break;
     case PUTSTM:

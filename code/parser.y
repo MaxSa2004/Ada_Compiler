@@ -60,6 +60,8 @@ Stm root = NULL;
 %right POWER
 %right NOT 
 %right UNARY_MINUS
+%nonassoc THEN
+%nonassoc ELSE
 
 %start top
 %type <stm_node> top
@@ -84,7 +86,7 @@ expr:
    | expr MULT expr {$$ = mk_opexp($1, TIMES, $3);}
    | expr POWER expr {$$ = mk_opexp($1, POW, $3);}
    | expr DIV expr {$$ = mk_opexp($1, DIVISION, $3);}
-   | LPAREN expr RPAREN {$$ = $2;}
+   | LPAREN expr RPAREN {$$ = mk_parexp($2);}
    | expr EQ expr {$$ = mk_opexp($1, EQUAL, $3);}
    | expr INEQ expr {$$ = mk_opexp($1, INEQUAL, $3);}
    | expr OR expr {$$ = mk_opexp($1, ORexp, $3);}
@@ -109,10 +111,10 @@ stm_list:
 
 stm: ID ASSIGN expr SEMICOLON {$$ = mk_assign($1, $3);}
    | IF expr THEN stm_list ELSE stm_list END IF SEMICOLON {$$ = mk_if($2, $4, $6);}
-   | IF expr THEN stm_list END IF SEMICOLON {$$ = mk_if($2, $4, NULL);}
+   | IF expr THEN stm_list END IF SEMICOLON %prec THEN {$$ = mk_if($2, $4, NULL);}
    | WHILE expr LOOP stm_list END LOOP SEMICOLON {$$ = mk_while($2, $4);}
-   | PUT_LINE expr SEMICOLON {$$ = put_line($2);}
-   | GET_LINE ID SEMICOLON {$$ = get_line($2);}
+   | PUT_LINE LPAREN expr RPAREN SEMICOLON {$$ = put_line($3);}
+   | GET_LINE LPAREN ID RPAREN SEMICOLON {$$ = get_line($3);}
    ;
 %%
 
