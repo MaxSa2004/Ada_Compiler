@@ -20,6 +20,7 @@ Stm root = NULL;
 /* Expressions */
 %token PLUS MINUS /* + - */
 %token MULT DIV /* * / */
+%token POWER /* ** */
 %token LPAREN RPAREN /* () */
 %token EQ INEQ /* = /= */
 %token OR /* or */
@@ -48,7 +49,7 @@ Stm root = NULL;
 %token SEMICOLON
 /* Procedure */
 %token MAIN
-%token BEGIN
+%token BEGIN_T
 %token PROCEDURE
 %token IS
 /* Precendence */
@@ -57,6 +58,7 @@ Stm root = NULL;
 %nonassoc EQ INEQ LESS GREATER LEQ GEQ
 %left PLUS MINUS
 %left MULT DIV MOD REM
+%right POWER
 %right NOT 
 %right UNARY_MINUS
 
@@ -81,6 +83,7 @@ expr:
    | expr PLUS expr {$$ = mk_opexp($1, SUM, $3);}
    | expr MINUS expr {$$ = mk_opexp($1, SUB, $3);}
    | expr MULT expr {$$ = mk_opexp($1, TIMES, $3);}
+   | expr POWER expr {$$ = mk_opexp($1, POW, $3);}
    | expr DIV expr {$$ = mk_opexp($1, DIVISION, $3);}
    | LPAREN expr RPAREN {$$ = $2;}
    | expr EQ expr {$$ = mk_opexp($1, EQUAL, $3);}
@@ -98,7 +101,7 @@ expr:
    | NOT expr {$$ = mk_unoexp(NOTexp, $2);}
    ;
 
-proc: PROCEDURE MAIN IS BEGIN stm_list END MAIN SEMICOLON {$$ = mk_proc($5);};
+proc: PROCEDURE MAIN IS BEGIN_T stm_list END MAIN SEMICOLON {$$ = mk_proc($5);};
 
 stm_list: 
    stm_list stm { $$ = ($1 ? mk_compound($1, $2) : $2);}

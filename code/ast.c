@@ -146,6 +146,9 @@ void print_op(BinOp op) {
   case DIVISION:
     printf("/");
     break;
+  case POW:
+    printf("**");
+    break;
   case EQUAL:
     printf("=");
     break;

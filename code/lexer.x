@@ -62,7 +62,7 @@ typedef struct {
 
 static keyword_tokens keywords[] = {
     {"main", MAIN},
-    {"begin", BEGIN},
+    {"begin", BEGIN_T},
     {"procedure", PROCEDURE},
     {"is", IS},
     {"if", IF},
@@ -95,6 +95,8 @@ static keyword_tokens keywords[] = {
 
 /* Declarations */ 
 DIGIT           [0-9]
+EXP             ([eE][+-]?[0-9]+)
+REAL            ({DIGIT}+\.{DIGIT}*{EXP}?|\.{DIGIT}+{EXP}?|{DIGIT}+{EXP})
 IDENT_START     [A-Za-z]
 IDENT_REST      [A-Za-z0-9_]
 IDENT           {IDENT_START}{IDENT_REST}*
@@ -118,6 +120,7 @@ STRING          \"{STRING_CHARS}*\"
 ">"             { return GREATER; }
 "+"             { return PLUS; }
 "-"             { return MINUS; }
+"**"            { return POWER; }
 "*"             { return MULT; }
 "/"             { return DIV; }
 "("             { return LPAREN; }
@@ -129,14 +132,8 @@ STRING          \"{STRING_CHARS}*\"
                         return STRING_LITERAL;
                     }
 
-
-{DIGIT}+\.{DIGIT}*  {
-                        yylval.f_val = atof(yytext);
-                        return FLOAT;
-                    }
-
-\.{DIGIT}+          {
-                        yylval.f_val = atof(yytext);
+{REAL}              {
+                        yylval.f_val = strtof(yytext, NULL);
                         return FLOAT;
                     }
 

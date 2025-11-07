@@ -58,44 +58,45 @@ extern int yydebug;
     MINUS = 259,                   /* MINUS  */
     MULT = 260,                    /* MULT  */
     DIV = 261,                     /* DIV  */
-    LPAREN = 262,                  /* LPAREN  */
-    RPAREN = 263,                  /* RPAREN  */
-    EQ = 264,                      /* EQ  */
-    INEQ = 265,                    /* INEQ  */
-    OR = 266,                      /* OR  */
-    AND = 267,                     /* AND  */
-    XOR = 268,                     /* XOR  */
-    LESS = 269,                    /* LESS  */
-    GREATER = 270,                 /* GREATER  */
-    LEQ = 271,                     /* LEQ  */
-    GEQ = 272,                     /* GEQ  */
-    MOD = 273,                     /* MOD  */
-    REM = 274,                     /* REM  */
-    ASSIGN = 275,                  /* ASSIGN  */
-    NOT = 276,                     /* NOT  */
-    ID = 277,                      /* ID  */
-    TRUE = 278,                    /* TRUE  */
-    FALSE = 279,                   /* FALSE  */
-    STRING_LITERAL = 280,          /* STRING_LITERAL  */
-    NUM = 281,                     /* NUM  */
-    FLOAT = 282,                   /* FLOAT  */
-    PUT_LINE = 283,                /* PUT_LINE  */
-    GET_LINE = 284,                /* GET_LINE  */
-    IF = 285,                      /* IF  */
-    THEN = 286,                    /* THEN  */
-    ELSE = 287,                    /* ELSE  */
-    WHILE = 288,                   /* WHILE  */
-    LOOP = 289,                    /* LOOP  */
-    END = 290,                     /* END  */
-    INTEGER = 291,                 /* INTEGER  */
-    BOOLEAN = 292,                 /* BOOLEAN  */
-    STRING = 293,                  /* STRING  */
-    SEMICOLON = 294,               /* SEMICOLON  */
-    MAIN = 295,                    /* MAIN  */
-    BEGIN = 296,                   /* BEGIN  */
-    PROCEDURE = 297,               /* PROCEDURE  */
-    IS = 298,                      /* IS  */
-    UNARY_MINUS = 299              /* UNARY_MINUS  */
+    POWER = 262,                   /* POWER  */
+    LPAREN = 263,                  /* LPAREN  */
+    RPAREN = 264,                  /* RPAREN  */
+    EQ = 265,                      /* EQ  */
+    INEQ = 266,                    /* INEQ  */
+    OR = 267,                      /* OR  */
+    AND = 268,                     /* AND  */
+    XOR = 269,                     /* XOR  */
+    LESS = 270,                    /* LESS  */
+    GREATER = 271,                 /* GREATER  */
+    LEQ = 272,                     /* LEQ  */
+    GEQ = 273,                     /* GEQ  */
+    MOD = 274,                     /* MOD  */
+    REM = 275,                     /* REM  */
+    ASSIGN = 276,                  /* ASSIGN  */
+    NOT = 277,                     /* NOT  */
+    ID = 278,                      /* ID  */
+    TRUE = 279,                    /* TRUE  */
+    FALSE = 280,                   /* FALSE  */
+    STRING_LITERAL = 281,          /* STRING_LITERAL  */
+    NUM = 282,                     /* NUM  */
+    FLOAT = 283,                   /* FLOAT  */
+    PUT_LINE = 284,                /* PUT_LINE  */
+    GET_LINE = 285,                /* GET_LINE  */
+    IF = 286,                      /* IF  */
+    THEN = 287,                    /* THEN  */
+    ELSE = 288,                    /* ELSE  */
+    WHILE = 289,                   /* WHILE  */
+    LOOP = 290,                    /* LOOP  */
+    END = 291,                     /* END  */
+    INTEGER = 292,                 /* INTEGER  */
+    BOOLEAN = 293,                 /* BOOLEAN  */
+    STRING = 294,                  /* STRING  */
+    SEMICOLON = 295,               /* SEMICOLON  */
+    MAIN = 296,                    /* MAIN  */
+    BEGIN_T = 297,                 /* BEGIN_T  */
+    PROCEDURE = 298,               /* PROCEDURE  */
+    IS = 299,                      /* IS  */
+    UNARY_MINUS = 300              /* UNARY_MINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -113,7 +114,7 @@ union YYSTYPE
    Stm stm_node;
    BinOp op_type;
 
-#line 117 "parser.tab.h"
+#line 118 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

@@ -1,6 +1,6 @@
 
 
-typedef enum { SUM, SUB, TIMES, DIVISION, EQUAL, INEQUAL, ORexp, ANDexp, XORexp, LESSexp, GREATERexp, LEQexp, GEQexp, MODULUS, REMAINDER }
+typedef enum { SUM, SUB, TIMES, DIVISION, EQUAL, INEQUAL, ORexp, ANDexp, XORexp, LESSexp, GREATERexp, LEQexp, GEQexp, MODULUS, REMAINDER, POW }
   BinOp;
 
 typedef enum {NOTexp, UMINUS}
