@@ -8,7 +8,7 @@ PARSER_SRC = parser.y
 LEXER_SRC = lexer.x
 OBJS = $(SRCS:.c=.o)
 
-EXEC = printAST_Mac  
+EXEC = printAST  
 
 
 .PHONY: all clean test debug release
