@@ -6,14 +6,11 @@ FLEX = flex
 SRCS = main.c ast.c ast_debug.c
 PARSER_SRC = parser.y
 LEXER_SRC = lexer.x
-OBJS = $(SRCS:.c=.o)
 
 EXEC = printAST  
 
-
-.PHONY: all clean test debug release
-
 all: $(EXEC)
+
 
 parser.tab.c parser.tab.h: $(PARSER_SRC)
 	$(BISON) -d $<
@@ -21,11 +18,9 @@ parser.tab.c parser.tab.h: $(PARSER_SRC)
 lex.yy.c: $(LEXER_SRC) parser.tab.h
 	$(FLEX) $<
 
-%.o: %.c ast.h 
-	$(CC) $(CFLAGS) -c $< -o $@
 
-$(EXEC): parser.tab.c lex.yy.c $(OBJS)
-	$(CC) $(CFLAGS) -o $@ parser.tab.c lex.yy.c $(OBJS) -lm
+$(EXEC): parser.tab.c lex.yy.c $(SRCS)
+	$(CC) $(CFLAGS) -o $@ parser.tab.c lex.yy.c $(SRCS) -lm
 
 test: $(EXEC)
 ifndef FILE
