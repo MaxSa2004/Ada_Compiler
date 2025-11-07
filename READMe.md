@@ -41,7 +41,7 @@ A scanner (Flex) and parser (Bison) for a small, well-defined subset of [Ada](ht
     - `gcc -Wall -g -o (nameOfExecutable) parser.tab.c lex.yy.c ast.c ast_debug.c main.c -lm`
 
 ## Run
-There are two different executables in this repository: printAST_Mac and printAST_Linux. The user must choose the one with its OS.
+There are two different executables in this repository: printAST_Mac and printAST_Linux. The user must choose the one with its OS. If the user wants to create another one, go to [Build](#build)
 - Pretty-print (source-like):
     - `./printAST_{your OS}`
     - or `./printAST_{your OS} < path/to/file.ada`
