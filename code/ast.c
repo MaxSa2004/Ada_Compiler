@@ -2,6 +2,7 @@
  */
 #include "ast.h"
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 
 /* Construct expressions
@@ -125,7 +126,7 @@ Stm mk_proc(char *name, Stm statements)
 {
   Stm ptr = malloc(sizeof(struct _Stm));
   ptr->stm_t = PROCSTM;
-  ptr->fields.proc.name = name;
+  ptr->fields.proc.name = name ? strdup(name) : strdup("Main");
   ptr->fields.proc.statements = statements;
   return ptr;
 }
@@ -150,52 +151,52 @@ static void print_ada_string(const char *s){
 void print_op(BinOp op) {
   switch(op) {
   case SUM:
-    printf("+");
+    printf("+ ");
     break;
   case SUB:
-    printf("-");
+    printf("- ");
     break;
   case TIMES:
-    printf("*");
+    printf("* ");
     break;
   case DIVISION:
-    printf("/");
+    printf("/ ");
     break;
   case POW:
-    printf("**");
+    printf("** ");
     break;
   case EQUAL:
-    printf("=");
+    printf("= ");
     break;
   case INEQUAL:
-    printf("/=");
+    printf("/= ");
     break;
   case ORexp:
-    printf(" OR ");
+    printf("OR ");
     break;
   case ANDexp:
-    printf(" AND ");
+    printf("AND ");
     break;
   case XORexp:
-    printf(" XOR ");
+    printf("XOR ");
     break;
   case LESSexp:
-    printf("<");
+    printf("< ");
     break;
   case GREATERexp:
-    printf(">");
+    printf("> ");
     break;
   case LEQexp:
-    printf("<=");
+    printf("<= ");
     break;
   case GEQexp:
-    printf(">=");
+    printf(">= ");
     break;
   case MODULUS:
-    printf(" MOD ");
+    printf("MOD ");
     break;
   case REMAINDER:
-    printf(" REM ");
+    printf("REM ");
     break;
   default:
     fprintf(stderr, "print_op: unknown Op %d\n", op);
@@ -207,7 +208,7 @@ void print_unop(UnOp op){
   switch (op)
   {
   case NOTexp:
-    printf(" NOT ");
+    printf("NOT ");
     break;
   case UMINUS:
     printf("-");
@@ -257,8 +258,8 @@ void print_stm(Stm ptr) {
   if(ptr == NULL) return;
   switch(ptr->stm_t) {
   case ASSIGNSTM:
-    printf("%s ", ptr->fields.assign.ident);
-    printf(":= ");
+    printf("%s", ptr->fields.assign.ident);
+    printf(" := ");
     print_exp(ptr->fields.assign.exp);
     printf("; ");
     break;
@@ -295,13 +296,10 @@ void print_stm(Stm ptr) {
     printf("); ");
     break;
   case PROCSTM:
-    printf("PROCEDURE ");
-    printf("%s ", ptr->fields.proc.name);
+    printf("PROCEDURE %s ", ptr->fields.proc.name);
     printf("IS BEGIN ");
     print_stm(ptr->fields.proc.statements);
-    printf("END ");
-    printf("%s ", ptr->fields.proc.name);
-    printf(";");
+    printf("END %s;\n", ptr->fields.proc.name);
     break;
   default:
     fprintf(stderr, "print_stm: unknown StmType %d\n", ptr->stm_t);
@@ -368,4 +366,5 @@ void free_stm(Stm ptr){
   default:
     break;
   }
+  free(ptr);
 }

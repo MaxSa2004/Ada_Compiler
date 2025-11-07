@@ -95,3 +95,7 @@ extern void print_stm(Stm);
 
 void free_exp(Exp ptr);
 void free_stm(Stm ptr);
+
+void debug_print_exp(Exp ptr);
+void debug_print_stm(Stm ptr, int indent);
+void debug_print(Stm root);
