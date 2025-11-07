@@ -21,7 +21,7 @@ lex.yy.c: $(LEXER_SRC) parser.tab.h
 	$(FLEX) $(LEXER_SRC)
 
 $(EXEC): parser.tab.c lex.yy.c $(SRCS)
-	$(CC) $(CFLAGS) -o $(EXEC) parser.tab.c lex.yy.c ast.c main.c -lfl -lm
+	$(CC) $(CFLAGS) -o $(EXEC) parser.tab.c lex.yy.c ast.c main.c -lm
 test: $(EXEC)
 ifndef FILE
 	@echo "Usage: make test FILE=path/to/input.ada [OUT=path/to/outfile]"

@@ -1,2 +1,0 @@
-# A sum of 4 numbers
-4 + 3 + 2 + 1

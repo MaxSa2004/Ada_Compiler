@@ -1347,7 +1347,7 @@ yyreduce:
 
   case 28: /* proc: PROCEDURE ID IS BEGIN_T stm_list END ID SEMICOLON  */
 #line 103 "parser.y"
-                                                        {(yyval.stm_node) = mk_proc((yyvsp[-3].stm_node));}
+                                                        {(yyval.stm_node) = mk_proc((yyvsp[-6].s_val), (yyvsp[-3].stm_node));}
 #line 1352 "parser.tab.c"
     break;
 

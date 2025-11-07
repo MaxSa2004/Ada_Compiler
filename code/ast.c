@@ -121,10 +121,11 @@ Stm get_line(char *ident)
   return ptr;
 }
 
-Stm mk_proc(Stm statements)
+Stm mk_proc(char *name, Stm statements)
 {
   Stm ptr = malloc(sizeof(struct _Stm));
   ptr->stm_t = PROCSTM;
+  ptr->fields.proc.name = name;
   ptr->fields.proc.statements = statements;
   return ptr;
 }
@@ -221,26 +222,24 @@ void print_exp(Exp ptr) {
   if(ptr == NULL) return;
   switch (ptr->exp_t) {
   case NUMEXP:
-    printf("%d", ptr->fields.num);
+    printf("%d ", ptr->fields.num);
     break;
   case FLOATEXP:
-    printf("%g", (double) ptr->fields.fnum);
+    printf("%g ", (double) ptr->fields.fnum);
     break;
   case IDEXP:
-    printf("%s", ptr->fields.ident);
+    printf("%s ", ptr->fields.ident);
     break;
   case OPEXP:
-    printf("(");
     print_exp(ptr->fields.opexp.left);
     print_op(ptr->fields.opexp.op);
     print_exp(ptr->fields.opexp.right);
-    printf(")");
     break;
   case STREXP:
     print_ada_string(ptr->fields.string);
     break;
   case BOOLEXP:
-    printf(ptr->fields.boolVal  ? "TRUE" : "FALSE");
+    printf(ptr->fields.boolVal  ? "TRUE " : "FALSE ");
     break;
   case UNOEXP:
     print_unop(ptr->fields.unoexp.op);
@@ -258,8 +257,8 @@ void print_stm(Stm ptr) {
   if(ptr == NULL) return;
   switch(ptr->stm_t) {
   case ASSIGNSTM:
-    printf("%s", ptr->fields.assign.ident);
-    printf(" := ");
+    printf("%s ", ptr->fields.assign.ident);
+    printf(":= ");
     print_exp(ptr->fields.assign.exp);
     printf("; ");
     break;
@@ -270,36 +269,39 @@ void print_stm(Stm ptr) {
   case IFSTM:
     printf("IF ");
     print_exp(ptr->fields.ifstm.cond);
-    printf(" THEN ");
+    printf("THEN ");
     print_stm(ptr->fields.ifstm.then_branch);
     if(ptr->fields.ifstm.else_branch != NULL){
-      printf(" ELSE ");
+      printf("ELSE ");
       print_stm(ptr->fields.ifstm.else_branch);
     }
-    printf(" END IF;");
+    printf("END IF; ");
     break;
   case WHILESTM:
     printf("WHILE ");
     print_exp(ptr->fields.whilestm.cond);
-    printf(" LOOP ");
+    printf("LOOP ");
     print_stm(ptr->fields.whilestm.branch);
-    printf(" END LOOP;");
+    printf("END LOOP; ");
     break;
   case PUTSTM:
     printf("PUT_LINE(");
     print_exp(ptr->fields.putstm.output);
-    printf(");");
+    printf("); ");
     break;
   case GETSTM:
-    printf("GET_LINE(");
-    printf("%s", ptr->fields.getstm.ident);
-    printf(");");
+    printf(" GET_LINE(");
+    printf("%s ", ptr->fields.getstm.ident);
+    printf("); ");
     break;
   case PROCSTM:
-    printf("PROCEDURE Main IS ");
-    printf("BEGIN ");
+    printf("PROCEDURE ");
+    printf("%s ", ptr->fields.proc.name);
+    printf("IS BEGIN ");
     print_stm(ptr->fields.proc.statements);
-    printf(" END Main;");
+    printf("END ");
+    printf("%s ", ptr->fields.proc.name);
+    printf(";");
     break;
   default:
     fprintf(stderr, "print_stm: unknown StmType %d\n", ptr->stm_t);
@@ -307,3 +309,63 @@ void print_stm(Stm ptr) {
   }
 }
 
+void free_exp(Exp ptr){
+  if(!ptr) return;
+  switch (ptr->exp_t) {
+  case NUMEXP:
+  case FLOATEXP:
+  case BOOLEXP:
+    break;
+  case IDEXP:
+    if(ptr->fields.ident) free(ptr->fields.ident);
+    break;
+  case OPEXP:
+    free_exp(ptr->fields.opexp.left);
+    free_exp(ptr->fields.opexp.right);
+    break;
+  case STREXP:
+    if(ptr->fields.string) free(ptr->fields.string);
+    break;
+  case UNOEXP:
+    free_exp(ptr->fields.unoexp.child);
+    break;
+  default:
+    break;
+  }
+  free(ptr);
+}
+
+void free_stm(Stm ptr){
+  if(ptr == NULL) return;
+  switch(ptr->stm_t) {
+  case ASSIGNSTM:
+    if(ptr->fields.assign.ident) free(ptr->fields.assign.ident);
+    free_exp(ptr->fields.assign.exp);
+    break;
+  case COMPOUNDSTM:
+    free_stm(ptr->fields.compound.fst);
+    free_stm(ptr->fields.compound.snd);
+    break;
+  case IFSTM:
+    free_exp(ptr->fields.ifstm.cond);
+    free_stm(ptr->fields.ifstm.then_branch);
+    if(ptr->fields.ifstm.else_branch) free_stm(ptr->fields.ifstm.else_branch);
+    break;
+  case WHILESTM:
+    free_exp(ptr->fields.whilestm.cond);
+    free_stm(ptr->fields.whilestm.branch);
+    break;
+  case PUTSTM:
+    free_exp(ptr->fields.putstm.output);
+    break;
+  case GETSTM:
+    if(ptr->fields.getstm.ident) free(ptr->fields.getstm.ident);
+    break;
+  case PROCSTM:
+    if(ptr->fields.proc.name) free(ptr->fields.proc.name);
+    free_stm(ptr->fields.proc.statements);
+    break;
+  default:
+    break;
+  }
+}

@@ -20,6 +20,7 @@ int main(int argc, char** argv) {
   }
   if(yyparse()==0 && root){
     print_stm(root);
+    free_stm(root);
   }
   if(yyin && yyin != stdin) fclose(yyin);
   return 0;

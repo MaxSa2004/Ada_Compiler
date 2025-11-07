@@ -61,6 +61,7 @@ struct _Stm {
       char *ident; 
     } getstm;       // GET LINE STM
     struct {
+      char *name;
       struct _Stm *statements;
     } proc;
   } fields;
@@ -79,7 +80,7 @@ extern Stm mk_if(Exp, Stm, Stm);
 extern Stm mk_while(Exp, Stm);
 extern Stm put_line(Exp);
 extern Stm get_line(char *);
-extern Stm mk_proc(Stm);
+extern Stm mk_proc(char *, Stm);
 
 extern Exp mk_opexp(Exp, BinOp, Exp);
 extern Exp mk_numexp(int);
@@ -91,3 +92,6 @@ extern Exp mk_unoexp(UnOp, Exp);
 
 extern void print_exp(Exp);
 extern void print_stm(Stm);
+
+void free_exp(Exp ptr);
+void free_stm(Stm ptr);

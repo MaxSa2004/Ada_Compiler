@@ -100,7 +100,7 @@ expr:
    | NOT expr {$$ = mk_unoexp(NOTexp, $2);}
    ;
 
-proc: PROCEDURE ID IS BEGIN_T stm_list END ID SEMICOLON {$$ = mk_proc($5);};
+proc: PROCEDURE ID IS BEGIN_T stm_list END ID SEMICOLON {$$ = mk_proc($2, $5);};
 
 stm_list: 
    stm_list stm { $$ = ($1 ? mk_compound($1, $2) : $2);}
