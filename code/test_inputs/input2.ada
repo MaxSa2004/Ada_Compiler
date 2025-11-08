@@ -4,7 +4,7 @@ begin
    get_line(name);
 
    -- Assignment and arithmetic expressions
-   x := 5;
+   x := -5;
    y := 10;
    z := x * y + (x - 3) / 2;
 
