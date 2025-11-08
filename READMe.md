@@ -71,8 +71,7 @@ Ada_Compiler/
 │   └── test_inputs/
 |        |── input1.ada
 |        ├── input2.ada
-|        ├── input3.ada
-|        └── input4.ada
+|        └── input3.ada
 ├── worksheet/
 |    └── Compiladores_Trabalho.pdf
 └── READMe.md
