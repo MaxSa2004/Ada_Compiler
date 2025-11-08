@@ -66,10 +66,13 @@ Ada_Compiler/
 |   ├── main.c
 |   ├── Makefile
 │   ├── parser.y
+│   ├── printAST_Mac
+│   ├── printAST_Linux
 │   └── test_inputs/
 |        |── input1.ada
 |        ├── input2.ada
-|        └── input3.ada
+|        ├── input3.ada
+|        └── input4.ada
 ├── worksheet/
 |    └── Compiladores_Trabalho.pdf
 └── READMe.md
