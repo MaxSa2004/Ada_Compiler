@@ -57,9 +57,9 @@ Stm root = NULL;
 %nonassoc EQ INEQ LESS GREATER LEQ GEQ
 %left PLUS MINUS
 %left MULT DIV MOD REM
-%right POWER
 %right NOT 
 %right UNARY_MINUS
+%right POWER
 %nonassoc THEN
 %nonassoc ELSE
 
