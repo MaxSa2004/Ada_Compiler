@@ -1,6 +1,6 @@
-#define _SYMBOLTABLE_H_ // include guard
 #include <stdbool.h> // for bool type
 #include <stddef.h> // for size_t type
+#define _SYMBOLTABLE_H_ // include guard
 #ifdef _SYMBOLTABLE_H_ // include guard
 typedef struct Type Type; // forward declaration of Type struct
 typedef enum { // kinds of symbols

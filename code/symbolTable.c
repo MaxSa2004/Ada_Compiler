@@ -16,8 +16,7 @@ Entry *lookup(Table tbl, char *name) {
   return NULL;
 }
 
-/*
- * Lookup a name in table; return a value or exits with error
+/* Lookup a name in table; return a value or exits with error
  */
 int lookup_value(Table tbl, char *name) {
   Entry *ptr = lookup(tbl, name);
@@ -56,7 +55,8 @@ Table add_entry(Table tbl, char *name, SymbolInfo* value) {
   return ptr;
 }
 
-/* libertar espaço na tabela */
+/* Free the memory used by a table
+ */
 void free_table(Table tbl){
     Entry *cur = tbl;
     while(cur != NULL){
@@ -67,7 +67,8 @@ void free_table(Table tbl){
         cur = next;
     }
 }
-/* remover entrada da tabela */
+/* remove entry from table
+*/
 void remove_entry(Table tbl, Entry *ptr){
     if(ptr == NULL) {
         fprintf(stderr, "unknown entry: %s\n", ptr);
@@ -96,6 +97,8 @@ void remove_entry(Table tbl, Entry *ptr){
 
 }
 
+/* create new symbol info
+*/
 SymbolInfo* symbolInfo_new(void){
     SymbolInfo *symInfo = malloc(sizeof(SymbolInfo));
     if(symInfo == NULL){
@@ -114,6 +117,8 @@ SymbolInfo* symbolInfo_new(void){
     return symInfo;
 }
 
+/* free symbol info
+*/
 void symbolInfo_free(SymbolInfo *symInfo){
     if(symInfo == NULL) return;
     if(symInfo->canonical_name) free(symInfo->canonical_name);
@@ -121,6 +126,8 @@ void symbolInfo_free(SymbolInfo *symInfo){
     free(symInfo);
 }
 
+/* generate canonical name for a symbol (case insensitive)
+*/
 char* canonicalize_name(char *name){
     if(name == NULL) return NULL;
     size_t len = strlen(name);
