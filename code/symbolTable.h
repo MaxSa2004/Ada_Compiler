@@ -1,42 +1,41 @@
-#define _SYMBOLTABLE_H_
-#include <stdbool.h>
-#include <stddef.h>
-#ifndef _SYMBOLTABLE_H_
-typedef struct Type Type;
-typedef enum {
+#define _SYMBOLTABLE_H_ // include guard
+#include <stdbool.h> // for bool type
+#include <stddef.h> // for size_t type
+#ifdef _SYMBOLTABLE_H_ // include guard
+typedef struct Type Type; // forward declaration of Type struct
+typedef enum { // kinds of symbols
     VAR, CONST, TYPE, FIELD, PROC
 } SymbolKind;
 
 typedef struct SymbolInfo {
-    SymbolKind kind;
-    Type *type;
-    int size;
-    bool isParameter;
-    size_t offset;
-    void* decl_node;
-    int line;
-    int column;
-    char* canonical_name;
-    char *name;
+    SymbolKind kind; // kind of symbol
+    Type *type; // pointer to type information
+    int size; // size in bytes
+    size_t offset; // offset in activation record or object
+    void* decl_node; // pointer to declaration node in AST
+    int line; // line number of declaration
+    int column; // column number of declaration
+    char* canonical_name; // canonical name for the symbol
+    char *name; // original name of the symbol
 } SymbolInfo;
 
 typedef struct _entry {
-    char *key;
-    SymbolInfo *value;
-    struct _entry *next;
+    char *key; // name of the symbol
+    SymbolInfo *value; // pointer to symbol information
+    struct _entry *next; // pointer to next entry in the table
 } Entry;
 
 
-typedef Entry *Table;
-extern Table create(void);
-extern int lookup_value(Table, char *);
-extern Entry *lookup(Table, char *);
-extern Table add_entry(Table, char *, SymbolInfo *);
-extern void update_value(Entry *, SymbolInfo *);
-extern void free_table(Table);
-extern void remove_entry(Table, char *);
-SymbolInfo *symbolInfo_new(void);
-void symbolInfo_free(SymbolInfo *);
-char* canonicalize_name(char *);
+typedef Entry *Table; // symbol table is a linked list of entries
+extern Table create(void); // create a new empty symbol table
+extern int lookup_value(Table, char *); // lookup a name and return its value
+extern Entry *lookup(Table, char *); // lookup a name and return its entry
+extern Table add_entry(Table, char *, SymbolInfo *); // add a new entry to the table
+extern void update_value(Entry *, SymbolInfo *); // update the value in an entry
+extern void free_table(Table); // free the memory used by the table
+extern void remove_entry(Table, Entry*); // remove an entry from the table
+SymbolInfo *symbolInfo_new(void); // create a new SymbolInfo
+void symbolInfo_free(SymbolInfo *); // free a SymbolInfo
+char* canonicalize_name(char *); // generate a canonical name for a symbol, because of the Ada case insensitivity
 
 #endif
