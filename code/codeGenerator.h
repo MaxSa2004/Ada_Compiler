@@ -1,15 +1,44 @@
+#ifndef CODE_GENERATOR_H
+#define CODE_GENERATOR_H
 #include <stdint.h>
+#include "ast.h"
+#include "symbolTable.h"
 
-typedef struct {
+
+
+typedef enum {
+    OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD, OP_REM, OP_POW,
+    OP_MOVE, OP_LOAD, OP_LABEL, OP_JUMP, OP_JUMP_FALSE, OP_PRINT, OP_READ,
+    OP_EQ, OP_NEQ, OP_LT, OP_GT, OP_LEQ, OP_GEQ, 
+    OP_AND, OP_OR, OP_NOT, OP_XOR, OP_NEG
+} Opcode;
+
+typedef enum {
+    OP_TEMP,
+    OP_VAR,
+    OP_CONST
+} op_kind;
+
+typedef struct Op {
+    op_kind kind;
+    union {
+        int temp_id;
+        char *name;
+        int value;
+    } contents;
+} Op;
+
+typedef struct Instr {
     Opcode opcode; 
-    Addr arg1, arg2, arg3;
+    Op arg1, arg2, arg3;
+    struct Instr* next;
 } Instr;
 
-typedef enum {MOVE, MOVEI, OP, OPI, LABEL, JUMP, COND} Opcode;
+extern Instr *instr_head;
+void init_code_generator();
+Op transExpr(Exp e);
+void transStm(Stm s);
+// void transCond(Exp e, Op labelF);
+void printTAC(Instr *head);
 
-typedef intptr_t Addr;
-
-
-
-void emit2(Opcode opc, Addr arg1, Addr arg2);
-void emit3(Opcode opc, Addr arg1, Addr arg2, Addr arg3);
+#endif

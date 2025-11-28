@@ -1,7 +1,9 @@
+#ifndef _SYMBOLTABLE_H_ // include guard
+#define _SYMBOLTABLE_H_ // include guard
 #include <stdbool.h> // for bool type
 #include <stddef.h> // for size_t type
-#define _SYMBOLTABLE_H_ // include guard
-#ifdef _SYMBOLTABLE_H_ // include guard
+#include "ast.h" // for Stm type
+
 typedef struct Type Type; // forward declaration of Type struct
 typedef enum { // kinds of symbols
     VAR, CONST, TYPE, FIELD, PROC
@@ -28,14 +30,15 @@ typedef struct _entry {
 
 typedef Entry *Table; // symbol table is a linked list of entries
 extern Table create(void); // create a new empty symbol table
-extern int lookup_value(Table, char *); // lookup a name and return its value
+extern SymbolInfo* lookup_value(Table, char *); // lookup a name and return its value
 extern Entry *lookup(Table, char *); // lookup a name and return its entry
 extern Table add_entry(Table, char *, SymbolInfo *); // add a new entry to the table
 extern void update_value(Entry *, SymbolInfo *); // update the value in an entry
 extern void free_table(Table); // free the memory used by the table
-extern void remove_entry(Table, Entry*); // remove an entry from the table
-SymbolInfo *symbolInfo_new(void); // create a new SymbolInfo
-void symbolInfo_free(SymbolInfo *); // free a SymbolInfo
-char* canonicalize_name(char *); // generate a canonical name for a symbol, because of the Ada case insensitivity
+extern Table remove_entry(Table, Entry*); // remove an entry from the table
+extern SymbolInfo *symbolInfo_new(void); // create a new SymbolInfo
+extern void symbolInfo_free(SymbolInfo *); // free a SymbolInfo
+extern char* canonicalize_name(char *); // generate a canonical name for a symbol, because of the Ada case insensitivity
+extern Table check_semantics(Stm root, Table t); // perform semantic checks and build symbol table
 
 #endif

@@ -6,6 +6,8 @@
         "type_traits": "cpp",
         "limits": "cpp",
         "ratio": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "parser.tab.h": "c",
+        "string.h": "c"
     }
 }

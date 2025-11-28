@@ -4,10 +4,15 @@
 #include <stdio.h>
 #include <string.h>
 
-
+/* create a new empty symbol table
+*/
+Table create(void) {
+  return NULL;
+}
 /* Lookup a name in a table; returns entry or NULL if it doesn't occur
  */
 Entry *lookup(Table tbl, char *name) {
+  if(name==NULL) return NULL;
   while (tbl != NULL) {
     if(strcmp(tbl->key, name) == 0) 
       return tbl;
@@ -18,7 +23,7 @@ Entry *lookup(Table tbl, char *name) {
 
 /* Lookup a name in table; return a value or exits with error
  */
-int lookup_value(Table tbl, char *name) {
+SymbolInfo* lookup_value(Table tbl, char *name) {
   Entry *ptr = lookup(tbl, name);
   if(ptr == NULL) {
     fprintf(stderr, "unknown name: %s\n", name);
@@ -32,7 +37,7 @@ int lookup_value(Table tbl, char *name) {
  */
 void update_value(Entry *ptr, SymbolInfo* new_value) {
   if(ptr == NULL) {
-    fprintf(stderr, "unknown entry: %s\n", ptr);
+    fprintf(stderr, "unknown entry\n");
     return;
   }
   if(ptr->value !=NULL){
@@ -49,7 +54,7 @@ Table add_entry(Table tbl, char *name, SymbolInfo* value) {
     fprintf(stderr, "out of memory\n");
     exit(1);
   }
-  ptr->key = name;
+  ptr->key = strdup(name);
   ptr->value = value;
   ptr->next = tbl;
   return ptr;
@@ -69,10 +74,11 @@ void free_table(Table tbl){
 }
 /* remove entry from table
 */
-void remove_entry(Table tbl, Entry *ptr){
+Table remove_entry(Table tbl, Entry *ptr){
+    
     if(ptr == NULL) {
-        fprintf(stderr, "unknown entry: %s\n", ptr);
-        return NULL;
+        fprintf(stderr, "unknown entry\n");
+        return tbl;
     }
     Entry *prev = NULL;
     Entry *cur = tbl;
@@ -92,7 +98,7 @@ void remove_entry(Table tbl, Entry *ptr){
         prev = cur;
         cur = cur->next;
     }
-    fprintf(stderr, "entry not found in table: %s\n", ptr);
+    fprintf(stderr, "entry not found in table: %s\n", ptr->key);
     return tbl;
 
 }
@@ -147,3 +153,63 @@ char* canonicalize_name(char *name){
     return canonical_name;
 }
 
+static Table register_var(Table t, char *name){
+  if(name==NULL) return t;
+  char *canon = canonicalize_name(name);
+  fprintf(stderr, "Registering variable: %s (canonical: %s)\n", name, canon);
+  if(lookup(t, canon) == NULL){
+    SymbolInfo *info = symbolInfo_new();
+    info->kind = VAR;
+    info->name = strdup(name);
+    info->canonical_name = strdup(canon);
+    t = add_entry(t, canon, info);
+    fprintf(stderr, "Variable %s registered.\n", name);
+  } else {
+    fprintf(stderr, "Variable %s already registered.\n", name);
+  }
+  free(canon);
+  return t;
+}
+/* perform semantic checks and build symbol table
+*/
+Table check_semantics(Stm s, Table t){
+  if(!s) return t;
+  switch(s->stm_t){
+    case ASSIGNSTM:
+      t  = register_var(t, s->fields.assign.ident);
+      break;
+    case COMPOUNDSTM:
+      t = check_semantics(s->fields.compound.fst, t);
+      t = check_semantics(s->fields.compound.snd, t);
+      break;
+    case IFSTM:
+      t = check_semantics(s->fields.ifstm.then_branch, t);
+      if(s->fields.ifstm.else_branch){
+        t = check_semantics(s->fields.ifstm.else_branch, t);
+      }
+      break;
+    case WHILESTM:
+      t = check_semantics(s->fields.whilestm.branch, t);
+      break;
+    case GETSTM:
+      t  = register_var(t, s->fields.getstm.ident);
+      break;
+    case PROCSTM: {
+      char *canon = canonicalize_name(s->fields.proc.name);
+      if(lookup(t, canon) == NULL){
+        SymbolInfo *info = symbolInfo_new();
+        info->kind = PROC;
+        info->name = strdup(s->fields.proc.name);
+        info->canonical_name = strdup(canon);
+        t = add_entry(t, canon, info);
+      }
+      free(canon);
+      t = check_semantics(s->fields.proc.statements, t);
+      break;
+    }
+    default:
+      break;
+
+  }
+  return t;
+}
