@@ -10,6 +10,7 @@
 Instr *instr_head = NULL, *instr_tail = NULL;
 int temp_count = 0, label_count = 0;
 
+static const char* getOpCodeString(Opcode op);
 // criar operador temporário
 Op newTemp() {
     Op op;
@@ -64,7 +65,7 @@ void emit(Opcode op, Op dest, Op arg1, Op arg2){
         instr_tail->next = new_instr;
         instr_tail = new_instr;
     }
-    fprintf(stderr, "Emitted instruction: %d\n", op);
+    fprintf(stderr, "Emitted instruction: %s\n", getOpCodeString(op));
 }
 
 Op transExpr(Exp exp){
@@ -217,7 +218,7 @@ void transStm(Stm s){
             Op condVal = transExpr(s->fields.ifstm.cond);
             emit(OP_JUMP_FALSE, elseLabel, condVal, empty);
             transStm(s->fields.ifstm.then_branch);
-            emit(OP_LABEL, endLabel, empty, empty);
+            emit(OP_JUMP, endLabel, empty, empty);
             emit(OP_LABEL, elseLabel, empty, empty);
             if(s->fields.ifstm.else_branch){
                 transStm(s->fields.ifstm.else_branch);
@@ -266,7 +267,7 @@ void printOp(Op op){
     }
 }
 
-char* getOpCodeString(Opcode op){
+static const char* getOpCodeString(Opcode op){
     switch(op){
         case OP_ADD: return "ADD";
         case OP_SUB: return "SUB";
@@ -297,13 +298,61 @@ char* getOpCodeString(Opcode op){
     }
 }
 
+typedef struct LabelPos {
+    const char* name;
+    int pos;
+    struct LabelPos *next;
+} LabelPos;
+
+static void record_label(LabelPos **head, const char* name, int pos){
+    LabelPos *new_label = (LabelPos*)malloc(sizeof(LabelPos));
+    new_label->name = name;
+    new_label->pos = pos;
+    new_label->next = *head;
+    *head = new_label;
+}
+
+static int get_label_pos(LabelPos *head, const char* name){
+    LabelPos *curr = head;
+    while(curr){
+        if(strcmp(curr->name, name)==0){
+            return curr->pos;
+        }
+        curr = curr->next;
+    }
+    return -1; // not found
+}
+
 void printTAC(Instr *head){
+    LabelPos *label_positions = NULL;
     Instr *curr = head;
+    int idx = 0;
+    while(curr){
+        if(curr->opcode ==OP_LABEL){
+            if(curr->arg3.kind == OP_VAR && curr->arg3.contents.name){
+                record_label(&label_positions, curr->arg3.contents.name, idx);
+            } else {
+                record_label(&label_positions, "unknown_label", idx);
+            }
+        }
+        idx++;
+        curr = curr->next;
+    }
+    curr = head;
     printf("\n---Three Address Code:---\n");
+    idx = 0;
     while(curr){
         if(curr->opcode  == OP_LABEL){
-            printOp(curr->arg3);
-            printf(" :\n ");
+            if(curr->arg3.kind == OP_VAR && curr->arg3.contents.name){
+                int label_pos = get_label_pos(label_positions, curr->arg3.contents.name);
+                if(label_pos>=0){
+                    printf("%s   (pos %d)\n", curr->arg3.contents.name, label_pos);
+                } else {
+                    printf("%s :\n", curr->arg3.contents.name);
+                }
+            } else {
+                printf("unknown_label");
+            }
         } else {
             printf("\t%s ", getOpCodeString(curr->opcode));
             if(curr->opcode==OP_MOVE){
@@ -333,6 +382,13 @@ void printTAC(Instr *head){
             printf("\n");
         }
         curr = curr->next;
+        idx++;
     }
     printf("-----------------------\n");
+
+    while(label_positions){
+        LabelPos *next = label_positions->next;
+        free(label_positions);
+        label_positions = next;
+    }
 }
