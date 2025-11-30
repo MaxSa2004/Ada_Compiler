@@ -14,11 +14,10 @@ typedef struct SymbolInfo {
     Type *type; // pointer to type information
     int size; // size in bytes
     size_t offset; // offset in activation record or object
-    void* decl_node; // pointer to declaration node in AST
-    int line; // line number of declaration
-    int column; // column number of declaration
     char* canonical_name; // canonical name for the symbol
     char *name; // original name of the symbol
+    char *scope; // scope where the symbol is declared
+
 } SymbolInfo;
 
 typedef struct _entry {
@@ -40,5 +39,6 @@ extern SymbolInfo *symbolInfo_new(void); // create a new SymbolInfo
 extern void symbolInfo_free(SymbolInfo *); // free a SymbolInfo
 extern char* canonicalize_name(char *); // generate a canonical name for a symbol, because of the Ada case insensitivity
 extern Table check_semantics(Stm root, Table t); // perform semantic checks and build symbol table
+extern void printSymbolTable(Table t); // print the symbol table for debugging
 
 #endif

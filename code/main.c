@@ -18,40 +18,7 @@
 #include "symbolTable.h"
 extern FILE *yyin;      // to read from files
 
-void printSymbolTable(Table t){
-  printf("\n---Symbol Table ---\n");
-  if(t==NULL){
-    printf("Empty Symbol Table\n");
-    return;
-  } else {
-    Entry *scan = t;
-    while(scan != NULL){
-      printf("Nome: %-15s | Kind: ", scan->key);
-      if(scan->value){
-        switch(scan->value->kind){
-          case VAR: 
-            printf("VAR");
-            break;
-          case CONST:
-            printf("CONST");
-            break;
-          case TYPE: 
-            printf("TYPE");
-            break;
-          case PROC:
-            printf("PROC");
-            break;
-          default:
-            printf("UNKNOWN");
-            break;
-        }
-      }
-      printf("\n");
-      scan = scan->next;
-    }
-  }
-  printf("------------------\n");
-}
+
 int main(int argc, char **argv)
 {
   int debug = 0;

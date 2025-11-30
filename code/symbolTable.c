@@ -3,7 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+static size_t global_offset_counter = 0;
+static char* current_scope = "Global";
+const int WORD_SIZE = 4; // assuming 4 bytes for word size  
 /* create a new empty symbol table
 */
 Table create(void) {
@@ -115,11 +117,9 @@ SymbolInfo* symbolInfo_new(void){
     symInfo->type = NULL;
     symInfo->size = 0;
     symInfo->offset = 0;
-    symInfo->decl_node = NULL;
-    symInfo->line = 0;
-    symInfo->column = 0;
     symInfo->canonical_name = NULL;
     symInfo->name = NULL;
+    symInfo->scope = NULL;
     return symInfo;
 }
 
@@ -129,6 +129,7 @@ void symbolInfo_free(SymbolInfo *symInfo){
     if(symInfo == NULL) return;
     if(symInfo->canonical_name) free(symInfo->canonical_name);
     if(symInfo->name) free(symInfo->name);
+    if(symInfo->scope) free(symInfo->scope);
     free(symInfo);
 }
 
@@ -156,16 +157,20 @@ char* canonicalize_name(char *name){
 static Table register_var(Table t, char *name){
   if(name==NULL) return t;
   char *canon = canonicalize_name(name);
-  fprintf(stderr, "Registering variable: %s (canonical: %s)\n", name, canon);
+  // fprintf(stderr, "Registering variable: %s (canonical: %s)\n", name, canon);
   if(lookup(t, canon) == NULL){
     SymbolInfo *info = symbolInfo_new();
     info->kind = VAR;
     info->name = strdup(name);
     info->canonical_name = strdup(canon);
+    info->scope = strdup(current_scope);
+    info->size = WORD_SIZE;
+    info->offset = global_offset_counter;
+    global_offset_counter += WORD_SIZE;
     t = add_entry(t, canon, info);
-    fprintf(stderr, "Variable %s registered.\n", name);
+    // fprintf(stderr, "Variable %s registered.\n", name);
   } else {
-    fprintf(stderr, "Variable %s already registered.\n", name);
+    // fprintf(stderr, "Variable %s already registered.\n", name);
   }
   free(canon);
   return t;
@@ -201,10 +206,15 @@ Table check_semantics(Stm s, Table t){
         info->kind = PROC;
         info->name = strdup(s->fields.proc.name);
         info->canonical_name = strdup(canon);
+        info->scope = strdup(current_scope);
         t = add_entry(t, canon, info);
       }
       free(canon);
+      char* old_scope = current_scope;
+      current_scope = s->fields.proc.name;
+
       t = check_semantics(s->fields.proc.statements, t);
+      current_scope = old_scope;
       break;
     }
     default:
@@ -212,4 +222,45 @@ Table check_semantics(Stm s, Table t){
 
   }
   return t;
+}
+
+static const char* get_kind_string(SymbolKind kind){
+  switch(kind){
+    case VAR:
+      return "VAR";
+    case CONST:
+      return "CONST";
+    case TYPE:
+      return "TYPE";
+    case PROC:
+      return "PROC";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+void printSymbolTable(Table t){
+  printf("\nSymbol Table:\n");
+  printf("---------------------------------------------------------------------------------\n");
+  printf("| %-15s | %-15s | %-8s | %-10s | %-6s | %-8s |\n", "CANONICAL NAME", "NAME", "KIND", "SCOPE", "SIZE", "OFFSET");
+  printf("---------------------------------------------------------------------------------\n");
+  if(t == NULL){
+    printf("| %-98s |\n", "(empty)");
+    printf("-------------------------------------------------------------------------------\n");
+    return;
+  }
+  Entry *cur = t;
+  while(cur != NULL){
+    SymbolInfo *info = cur->value;
+    printf("| %-15s | %-15s | %-8s | %-10s | %-6d | %-8zu |\n",
+           info->canonical_name ? info->canonical_name : "(null)",
+           info->name ? info->name : "(null)",
+           get_kind_string(info->kind),
+           info->scope ? info->scope : "(null)",
+           info->size,
+           info->offset);
+    cur = cur->next;
+  }
+  printf("---------------------------------------------------------------------------------\n");
+  printf("\n");
 }

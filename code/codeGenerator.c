@@ -10,7 +10,7 @@
 Instr *instr_head = NULL, *instr_tail = NULL;
 int temp_count = 0, label_count = 0;
 void emit(Opcode op, Op dest, Op arg1, Op arg2);
-static const char *getOpCodeString(Opcode op);
+// static const char *getOpCodeString(Opcode op);
 typedef struct VarTemp
 {
     char *name;
@@ -38,9 +38,12 @@ static Op getVarTemp(char *name)
     new_var_temp->name = strdup(name);
     new_var_temp->temp = temp;
     new_var_temp->next = NULL;
-    if(var_temp_tail == NULL){
+    if (var_temp_tail == NULL)
+    {
         var_temp_head = var_temp_tail = new_var_temp;
-    } else {
+    }
+    else
+    {
         var_temp_tail->next = new_var_temp;
         var_temp_tail = new_var_temp;
     }
@@ -140,7 +143,7 @@ void emit(Opcode op, Op dest, Op arg1, Op arg2)
         instr_tail->next = new_instr;
         instr_tail = new_instr;
     }
-    fprintf(stderr, "Emitted instruction: %s\n", getOpCodeString(op));
+    // fprintf(stderr, "Emitted instruction: %s\n", getOpCodeString(op));
 }
 
 Op transExpr(Exp exp)
@@ -326,7 +329,7 @@ void transCond(Exp exp, Op labelT, Op labelF)
     Op condVal = transExpr(exp);
     Op zero = newConstInt(0);
     Op cmp = newTemp();
-    emit(OP_EQ, cmp, condVal, zero);
+    emit(OP_NEQ, cmp, condVal, zero);
     emit(OP_JUMP_FALSE, labelF, cmp, empty);
     emit(OP_JUMP, labelT, empty, empty);
 }
@@ -337,7 +340,7 @@ void transStm(Stm s)
     if (!s)
         return;
 
-    fprintf(stderr, "Translating statement of type %d\n", s->stm_t);
+    // fprintf(stderr, "Translating statement of type %d\n", s->stm_t);
     switch (s->stm_t)
     {
     case ASSIGNSTM:
@@ -353,11 +356,15 @@ void transStm(Stm s)
         break;
     case IFSTM:
     {
+        Op thenLabel = newLabel();
         Op elseLabel = newLabel();
         Op endLabel = newLabel();
-        transCond(s->fields.ifstm.cond, endLabel, elseLabel);
+        Op empty = (Op){0};
+        transCond(s->fields.ifstm.cond, thenLabel, elseLabel);
+        emit(OP_LABEL, thenLabel, empty, empty);
         transStm(s->fields.ifstm.then_branch);
         emit(OP_JUMP, endLabel, empty, empty);
+
         emit(OP_LABEL, elseLabel, empty, empty);
         if (s->fields.ifstm.else_branch)
         {
@@ -369,9 +376,12 @@ void transStm(Stm s)
     case WHILESTM:
     {
         Op startLabel = newLabel();
+        Op bodyLabel = newLabel();
         Op endLabel = newLabel();
+        Op empty = (Op){0};
         emit(OP_LABEL, startLabel, empty, empty);
-        transCond(s->fields.whilestm.cond, endLabel, empty);
+        transCond(s->fields.whilestm.cond, bodyLabel, endLabel);
+        emit(OP_LABEL, bodyLabel, empty, empty);
         transStm(s->fields.whilestm.branch);
         emit(OP_JUMP, startLabel, empty, empty);
         emit(OP_LABEL, endLabel, empty, empty);
@@ -381,6 +391,12 @@ void transStm(Stm s)
     {
         Op val = transExpr(s->fields.putstm.output);
         emit(OP_PRINT, val, empty, empty);
+        break;
+    }
+    case GETSTM:
+    {
+        Op dest = getVarTemp(s->fields.getstm.ident);
+        emit(OP_READ, dest, empty, empty);
         break;
     }
     case PROCSTM:
@@ -415,7 +431,7 @@ void printOp(Op op)
     }
 }
 
-static const char *getOpCodeString(Opcode op)
+/* static const char *getOpCodeString(Opcode op)
 {
     switch (op)
     {
@@ -472,7 +488,7 @@ static const char *getOpCodeString(Opcode op)
     default:
         return "UNKNOWN_OPCODE";
     }
-}
+} */
 
 static const char *arith_symbol(Opcode op)
 {
@@ -528,7 +544,7 @@ static const char *rel_symbol(Opcode op)
 void printTAC(Instr *head)
 {
     Instr *curr = head;
-    printf("\n---Three Address Code:---\n");
+    printf("\nThree Address Code:\n");
 
     while (curr)
     {
@@ -540,17 +556,46 @@ void printTAC(Instr *head)
         {
             Instr *rel = curr;
             Instr *jf = rel->next;
-
-            const char *else_label = (jf->arg3.kind == OP_VAR) ? jf->arg3.contents.name : (jf->arg1.kind == OP_VAR) ? jf->arg1.contents.name
-                                                                                                                    : "unknown_label";
-            const char *true_label = (jf->next && jf->next->opcode == OP_LABEL && jf->next->arg3.kind == OP_VAR) ? jf->next->arg3.contents.name : NULL;
-            printf("\tCOND ");
-            printOp(rel->arg1);
-            printf(" %s ", rel_symbol(rel->opcode));
-            printOp(rel->arg2);
-            printf("%s %s\n", true_label ? true_label : "(true)", else_label);
-            curr = jf->next;
-            continue;
+            int match_temp = 0;
+            if (jf->arg1.kind == OP_TEMP && rel->arg3.kind == OP_TEMP &&
+                jf->arg1.contents.temp_id == rel->arg3.contents.temp_id)
+            {
+                match_temp = 1;
+            }
+            if (match_temp)
+            {
+                const char *else_label = (jf->arg3.kind == OP_VAR && jf->arg3.contents.name) ? jf->arg3.contents.name : "(no_false)";
+                const char *true_label = NULL;
+                if (jf->next && jf->next->opcode == OP_JUMP && jf->next->arg3.kind == OP_VAR)
+                {
+                    true_label = jf->next->arg3.contents.name;
+                    printf("\tCOND ");
+                    printOp(rel->arg1);
+                    printf(" %s ", rel_symbol(rel->opcode));
+                    printOp(rel->arg2);
+                    printf("%s %s\n", true_label, else_label);
+                    curr = jf->next->next;
+                    continue;
+                }
+                if(jf->next && jf->next->opcode == OP_LABEL && jf->next->arg3.kind == OP_VAR)
+                {
+                    true_label = jf->next->arg3.contents.name;
+                    printf("\tCOND ");
+                    printOp(rel->arg1);
+                    printf(" %s ", rel_symbol(rel->opcode));
+                    printOp(rel->arg2);
+                    printf("%s %s\n", true_label, else_label);
+                    curr = jf->next;
+                    continue;
+                }
+                printf("\tCOND ");
+                printOp(rel->arg1);
+                printf(" %s ", rel_symbol(rel->opcode));
+                printOp(rel->arg2);
+                printf("(true) %s\n", else_label);
+                curr = jf->next;
+                continue;
+            }
         }
         // LABEL:
         if (curr->opcode == OP_LABEL)
@@ -605,6 +650,7 @@ void printTAC(Instr *head)
             printOp(curr->arg1);
             printf(" %s ", arith_symbol(curr->opcode));
             printOp(curr->arg2);
+            printf("\n");
             curr = curr->next;
             continue;
         }
@@ -616,12 +662,21 @@ void printTAC(Instr *head)
             printOp(curr->arg1);
             printf(" %s ", rel_symbol(curr->opcode));
             printOp(curr->arg2);
+            printf("\n");
             curr = curr->next;
             continue;
         }
         else if (curr->opcode == OP_PRINT)
         {
             printf("\tPUT ");
+            printOp(curr->arg3);
+            printf("\n");
+            curr = curr->next;
+            continue;
+        }
+        else if( curr->opcode == OP_READ)
+        {
+            printf("\tGET ");
             printOp(curr->arg3);
             printf("\n");
             curr = curr->next;
@@ -655,7 +710,7 @@ void printTAC(Instr *head)
         curr = curr->next;
     }
 
-    printf("-----------------------\n");
+    printf("\n");
 }
 static void freeOpIfNeeded(Op *op)
 {
@@ -685,22 +740,31 @@ void freeInstructions(Instr *head)
 
 void allocate_var_temps_from_table(Table tbl)
 {
-    if(!tbl) return;
+    if (!tbl)
+        return;
     int count = 0;
     Entry *e = tbl;
-    while(e) {count++; e = e->next;}
+    while (e)
+    {
+        count++;
+        e = e->next;
+    }
     Entry *arr = NULL;
-    if(count>0){
-        arr = (Entry *)malloc(sizeof(Entry)*count);
+    if (count > 0)
+    {
+        arr = (Entry *)malloc(sizeof(Entry) * count);
         e = tbl;
         int i = 0;
-        while(e){
+        while (e)
+        {
             arr[i++] = *e;
             e = e->next;
         }
-        for(int j = 0; j<count; j++){
+        for (int j = count - 1; j >= 0; --j)
+        {
             Entry *entry = &arr[j];
-            if(entry && entry->value && entry->value->kind == VAR){
+            if (entry && entry->value && entry->value->kind == VAR)
+            {
                 const char *orig = entry->value->name ? entry->value->name : entry->key;
                 getVarTemp((char *)orig);
             }
@@ -712,7 +776,8 @@ void allocate_var_temps_from_table(Table tbl)
 void emit_var_prologue(void)
 {
     Op empty = {0};
-    for(VarTemp* p = var_temp_head; p != NULL; p = p->next){
+    for (VarTemp *p = var_temp_head; p != NULL; p = p->next)
+    {
         Op varOp = newVar(p->name);
         emit(OP_MOVE, p->temp, varOp, empty);
     }
@@ -720,9 +785,14 @@ void emit_var_prologue(void)
 
 void printVarTemps(void)
 {
-    printf("\n---Variable Temps:---\n");
-    for(VarTemp* p = var_temp_head; p != NULL; p = p->next){
+    printf("\nVariable Temps:\n");
+    if( var_temp_head == NULL){
+        printf("(none)\n");
+        return;
+    }
+    for (VarTemp *p = var_temp_head; p != NULL; p = p->next)
+    {
         printf("Variable %s mapped to Temp t%d\n", p->name, p->temp.contents.temp_id);
     }
-    printf("---------------------\n");
+    printf("\n");
 }
