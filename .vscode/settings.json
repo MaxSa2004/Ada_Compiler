@@ -8,6 +8,7 @@
         "ratio": "cpp",
         "variant": "cpp",
         "parser.tab.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "typeinfo": "c"
     }
 }

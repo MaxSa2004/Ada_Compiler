@@ -81,6 +81,9 @@ int main(int argc, char **argv)
     symTable = check_semantics(root, symTable);
     printSymbolTable(symTable);
     init_code_generator();
+    allocate_var_temps_from_table(symTable);
+    printVarTemps();
+    emit_var_prologue();
     transStm(root);
     printTAC(instr_head);
     free_stm(root);

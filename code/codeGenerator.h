@@ -16,7 +16,9 @@ typedef enum {
 typedef enum {
     OP_TEMP,
     OP_VAR,
-    OP_CONST
+    OP_CONST_INT,
+    OP_CONST_FLOAT,
+    OP_CONST_STRING
 } op_kind;
 
 typedef struct Op {
@@ -24,7 +26,9 @@ typedef struct Op {
     union {
         int temp_id;
         char *name;
-        int value;
+        int ival;
+        double fval;
+        char *sval;
     } contents;
 } Op;
 
@@ -35,10 +39,15 @@ typedef struct Instr {
 } Instr;
 
 extern Instr *instr_head;
+extern Instr *instr_tail;
 void init_code_generator();
 Op transExpr(Exp e);
 void transStm(Stm s);
-// void transCond(Exp e, Op labelF);
+void transCond(Exp e, Op labelF, Op labelT);
 void printTAC(Instr *head);
+void freeInstructions(Instr *head);
+void allocate_var_temps_from_table(Table tbl);
+void emit_var_prologue(void);
+void printVarTemps(void);
 
 #endif
