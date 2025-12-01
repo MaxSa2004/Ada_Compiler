@@ -577,7 +577,7 @@ void printTAC(Instr *head)
                     curr = jf->next->next;
                     continue;
                 }
-                if(jf->next && jf->next->opcode == OP_LABEL && jf->next->arg3.kind == OP_VAR)
+                if (jf->next && jf->next->opcode == OP_LABEL && jf->next->arg3.kind == OP_VAR)
                 {
                     true_label = jf->next->arg3.contents.name;
                     printf("\tCOND ");
@@ -674,7 +674,7 @@ void printTAC(Instr *head)
             curr = curr->next;
             continue;
         }
-        else if( curr->opcode == OP_READ)
+        else if (curr->opcode == OP_READ)
         {
             printf("\tGET ");
             printOp(curr->arg3);
@@ -688,6 +688,10 @@ void printTAC(Instr *head)
             printf("\t");
             printOp(curr->arg3);
             printf(" := ");
+            if (curr->opcode == OP_NEG)
+                printf("-");
+            else if (curr->opcode == OP_NOT)
+                printf("NOT ");
             printOp(curr->arg1);
             printf("\n");
             curr = curr->next;
@@ -786,7 +790,8 @@ void emit_var_prologue(void)
 void printVarTemps(void)
 {
     printf("\nVariable Temps:\n");
-    if( var_temp_head == NULL){
+    if (var_temp_head == NULL)
+    {
         printf("(none)\n");
         return;
     }
