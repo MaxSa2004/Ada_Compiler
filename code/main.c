@@ -57,7 +57,6 @@ int main(int argc, char **argv)
     generateMIPS(instr_head, "outputMIPS.s");
     free_stm(root);
     free_table(symTable);
-    freeInstructions(instr_head);
   }
   if (yyin && yyin != stdin)
     fclose(yyin);
