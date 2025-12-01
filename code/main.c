@@ -16,6 +16,7 @@
 #include "parser.tab.h" /* depois de compilar o parser.y */
 #include "codeGenerator.h"
 #include "symbolTable.h"
+#include "mips_backend.h"
 extern FILE *yyin;      // to read from files
 
 
@@ -53,9 +54,10 @@ int main(int argc, char **argv)
     emit_var_prologue();
     transStm(root);
     printTAC(instr_head);
+    generateMIPS(instr_head, "outputMIPS.s");
     free_stm(root);
     free_table(symTable);
-
+    freeInstructions(instr_head);
   }
   if (yyin && yyin != stdin)
     fclose(yyin);
