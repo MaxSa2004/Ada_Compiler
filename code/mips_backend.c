@@ -73,7 +73,7 @@ static void scanInstrs(Instr *head)
         {
             Op *op = &ops[i];
 
-            /* update highest temp id when we see a temp */
+            // update highest temp id when we see a temp
             if (op->kind == OP_TEMP)
             {
                 if (op->contents.temp_id > highest_temp_id)
@@ -83,7 +83,7 @@ static void scanInstrs(Instr *head)
                 continue;
             }
 
-            /* collect string constants as before */
+            // collect string constants as before
             if (op->kind == OP_CONST_STRING)
             {
                 if (op->contents.sval)
@@ -123,7 +123,7 @@ static char *escapeStringForASCIIZ(const char *s)
 {
     if (!s)
     {
-        /* return an empty string (caller frees) */
+        // return an empty string (caller frees)
         char *e = malloc(1);
         if (e)
             e[0] = '\0';
@@ -131,7 +131,7 @@ static char *escapeStringForASCIIZ(const char *s)
     }
 
     size_t len = strlen(s);
-    /* worst-case every char becomes two bytes (\" or \\ or \n) */
+    // worst-case every char becomes two bytes (\" or \\ or \n)
     char *out = (char *)malloc(len * 2 + 1);
     if (!out)
         return NULL;
@@ -179,8 +179,8 @@ static void loadOpToReg(Op op, const char *reg)
 {
     // empty op
     if (op.kind == 0)
-    {
-        emit("  li %s, 0", reg); // load 0 into register named reg by default
+    { // op.kind==0 if op structs default initialized
+        // emit("  # ERROR: loadOpToReg called with empty operand; IR must produce a boolean/temp before branching.");
         return;
     }
 
@@ -190,30 +190,37 @@ static void loadOpToReg(Op op, const char *reg)
         emit("  li %s, %d", reg, op.contents.ival);
         break;
     case OP_CONST_STRING:
+    {
         const char *str = addString(op.contents.sval);
         emit("  la %s, %s", reg, str);
         break;
-    case OP_CONST_FLOAT: // Note: NEED TO FULLY IMPLEMENT AND FIX
+    }
+    case OP_CONST_FLOAT:
         emit("  # FLOAT CONST NOT FULLY SUPPORTED! val: %g", op.contents.fval);
-        emit("  li %s, 0", reg); // temporarily emit as a 0 int
+        /* do NOT write into the same register used for integer conditions.
+           if needed, set reg to 0 only when explicitly printing floats or using FP path. */
+        emit("  # Skipping integer register load for float const to avoid clobbering.");
         break;
     case OP_VAR:
         if (op.contents.name)
         {
-            emit("  lw %s, %s", reg, op.contents.name); // var label in .data
+            // use la/lw for portability across assemblers (pseudo-instruction free).
+            emit("  la $t9, %s", op.contents.name);
+            emit("  lw %s, 0($t9)", reg);
         }
         else
         {
-            emit("  li %s, 0", reg); // if name field is null revert to loading 0
+            emit("  # ERROR: OP_VAR with null name");
         }
         break;
     case OP_TEMP:
+    {
         int offset = tempOffset(op.contents.temp_id);
-        emit("  lw %s, %d($fp)  #load temp t%d", reg, offset, op.contents.temp_id);
+        emit("  lw %s, %d($fp)  # load temp t%d", reg, offset, op.contents.temp_id);
         break;
+    }
     default:
-        emit("  # loadOpToReg: encountered unspported kind %d", op.kind);
-        emit("  li %s, 0", reg);
+        emit("  # ERROR: loadOpToReg: unsupported kind %d", op.kind);
         break;
     }
 }
@@ -223,23 +230,28 @@ static void loadRegToOp(const char *reg, Op op)
 {
     if (op.kind == 0)
         return;
+
     switch (op.kind)
     {
     case OP_VAR:
         if (op.contents.name)
         {
-            // store into global labels ($t9 used as address temp)
             emit("  la $t9, %s", op.contents.name);
             emit("  sw %s, 0($t9)", reg);
         }
+        else
+        {
+            emit("  # ERROR: loadRegToOp OP_VAR null name");
+        }
         break;
     case OP_TEMP:
+    {
         int offset = tempOffset(op.contents.temp_id);
-        emit("  sw %s, %d($fp)  #load temp t%d", reg, offset, op.contents.temp_id);
+        emit("  sw %s, %d($fp)  # store temp t%d", reg, offset, op.contents.temp_id);
         break;
-        break;
+    }
     default:
-        emit("  # loadRegToOp: encountered unspported kind %d", op.kind);
+        emit("  # ERROR: loadRegToOp: unsupported kind %d", op.kind);
         break;
     }
 }
@@ -247,7 +259,7 @@ static void loadRegToOp(const char *reg, Op op)
 // emit logical and binary math ops.
 static void emitBinOp(Opcode op, Op dest, Op r1, Op r2)
 {
-    loadOpToReg(r1, "$t0"); // static registers safe to use as they execute then store immediately
+    loadOpToReg(r1, "$t0");
     loadOpToReg(r2, "$t1");
 
     switch (op)
@@ -263,48 +275,46 @@ static void emitBinOp(Opcode op, Op dest, Op r1, Op r2)
         break;
     case OP_DIV:
         emit("  div $t0, $t1");
-        emit("  mflo $t0"); // copies quotient into int $rd
+        emit("  mflo $t0");
         break;
     case OP_MOD:
     case OP_REM:
         emit("  div $t0, $t1");
-        emit("  mfhi $t0"); // machine remainder
+        emit("  mfhi $t0");
         break;
     case OP_AND:
         emit("  and $t0, $t0, $t1");
         break;
     case OP_OR:
-        emit("  or $t0, $t0, $t1");
+        emit("  or  $t0, $t0, $t1");
         break;
     case OP_XOR:
         emit("  xor $t0, $t0, $t1");
         break;
     case OP_EQ:
         emit("  xor $t2, $t0, $t1");
-        emit("  sltiu $t0, $t2, 1"); // 1 if equal
+        emit("  sltiu $t0, $t2, 1");
         break;
     case OP_NEQ:
         emit("  xor $t2, $t0, $t1");
-        emit("  sltu $t0, $zero, $t2"); // 1 if non-zero
+        emit("  sltu  $t0, $zero, $t2");
         break;
     case OP_LT:
         emit("  slt $t0, $t0, $t1");
-        break;
+        break; // t0 = (r1 < r2)
     case OP_GT:
         emit("  slt $t0, $t1, $t0");
-        break;
+        break; // t0 = (r2 < r1)
     case OP_LEQ:
-        // !(a2 < a1)  i.e., not (a1 > a2) -> slt tmp,a2,a1 ; not
         emit("  slt $t2, $t1, $t0");
         emit("  xori $t0, $t2, 1");
-        break;
+        break; // !(r2<r1)
     case OP_GEQ:
         emit("  slt $t2, $t0, $t1");
         emit("  xori $t0, $t2, 1");
-        break;
+        break; // !(r1<r2)
     default:
-        emit("  # binary op not implemented: %d", op);
-        emit("  li $t0, 0");
+        emit("  # ERROR: binary op not implemented: %d", op);
         break;
     }
     loadRegToOp("$t0", dest);
@@ -321,12 +331,10 @@ static void emimtUnaryOp(Opcode op, Op dest, Op r1)
         emit("  sub $t0, $zero, $t0");
         break;
     case OP_NOT:
-        // result = (a1 == 0) ? 1 : 0
         emit("  sltiu $t0, $t0, 1");
         break;
     default:
-        emit("  # unary op not implemented %d", op);
-        emit("  li $t0, 0");
+        emit("  # ERROR: unary op not implemented %d", op);
         break;
     }
     loadRegToOp("$t0", dest);
@@ -422,7 +430,6 @@ void generateMIPS(Instr *head, const char *filename)
     // process and emit each instruction
     for (Instr *i = head; i; i = i->next)
     {
-        // comment TAC into MIPS code to see line by line translation
         emit("  #TAC: opcode:%d", i->opcode);
 
         switch (i->opcode)
@@ -437,14 +444,20 @@ void generateMIPS(Instr *head, const char *filename)
                 emit("Label_unknown:");
             }
             break;
+
         case OP_JUMP:
             if (i->arg3.kind == OP_VAR && i->arg3.contents.name)
             {
                 emit("  j %s", i->arg3.contents.name);
             }
+            else
+            {
+                emit("  # ERROR: JUMP with unknown label");
+            }
             break;
+
         case OP_JUMP_FALSE:
-            // arg3 = label, arg1 = (temp/expr condition)
+            // require a real boolean/int/temp in arg1. dont default to 0
             if (i->arg1.kind == OP_TEMP || i->arg1.kind == OP_VAR || i->arg1.kind == OP_CONST_INT)
             {
                 loadOpToReg(i->arg1, "$t0");
@@ -454,19 +467,21 @@ void generateMIPS(Instr *head, const char *filename)
                 }
                 else
                 {
-                    emit("  # JUMP_FALSE with unknown label");
+                    emit("  # ERROR: JUMP_FALSE with unknown label");
                 }
             }
             else
             {
-                emit("  # JUMP_FALSE with unsupported arg1 kind %d", i->arg1.kind);
+                emit("  # ERROR: JUMP_FALSE expects boolean in arg1; got kind %d", i->arg1.kind);
             }
             break;
+
         case OP_MOVE:
-            // arg3 := arg1
+        case OP_LOAD:
             loadOpToReg(i->arg1, "$t0");
             loadRegToOp("$t0", i->arg3);
             break;
+
         case OP_ADD:
         case OP_SUB:
         case OP_MUL:
@@ -484,12 +499,14 @@ void generateMIPS(Instr *head, const char *filename)
         case OP_GEQ:
             emitBinOp(i->opcode, i->arg3, i->arg1, i->arg2);
             break;
+
         case OP_NOT:
         case OP_NEG:
-            emimtUnaryOp(i->opcode, i->arg3, i->arg3);
+            // IMPORTANT: pass source operand as arg1; do not assume dest==source.
+            emimtUnaryOp(i->opcode, i->arg3, i->arg1.kind ? i->arg1 : i->arg3);
             break;
+
         case OP_PRINT:
-            // arg3 contains what to print
             if (i->arg3.kind == OP_CONST_STRING)
             {
                 const char *lab = addString(i->arg3.contents.sval);
@@ -497,9 +514,7 @@ void generateMIPS(Instr *head, const char *filename)
                 emit("  li $v0, 4");
                 emit("  syscall");
             }
-            else if (i->arg3.kind == OP_CONST_INT ||
-                     i->arg3.kind == OP_TEMP ||
-                     i->arg3.kind == OP_VAR)
+            else if (i->arg3.kind == OP_CONST_INT || i->arg3.kind == OP_TEMP || i->arg3.kind == OP_VAR)
             {
                 loadOpToReg(i->arg3, "$a0");
                 emit("  li $v0, 1");
@@ -507,44 +522,37 @@ void generateMIPS(Instr *head, const char *filename)
             }
             else if (i->arg3.kind == OP_CONST_FLOAT)
             {
-                // NOTE: either implement float printing (load to $f12, syscall 2) or fallback
-                emit("  # NOTE: float not supported yet");
+                emit("  # NOTE: float printing not supported yet; printing 0 as placeholder");
                 emit("  li $a0, 0");
                 emit("  li $v0, 1");
                 emit("  syscall");
             }
             else
             {
-                fprintf(stderr, "PRINT: unsupported operand kind=%d\n", i->arg3.kind);
+                emit("  # ERROR: PRINT unsupported operand kind=%d", i->arg3.kind);
             }
             emit("  la $a0, newline");
             emit("  li $v0, 4");
             emit("  syscall");
             break;
+
         case OP_READ:
-            // only reads ints
             emit("  li $v0, 5");
             emit("  syscall");
             emit("  move $t0, $v0");
             loadRegToOp("$t0", i->arg3);
             break;
-        case OP_LOAD:
-            // treated as move
-            // arg3 := arg1
-            loadOpToReg(i->arg1, "$t0");
-            loadRegToOp("$t0", i->arg3);
-            break;
+
         case OP_POW:
-            // compute arg1 ^ arg2 -> arg3; use helper pow_int
-            // load args into $a0(base), $a1(exp) and jal pow_int
             loadOpToReg(i->arg1, "$a0");
             loadOpToReg(i->arg2, "$a1");
             emit("  jal pow_int");
             emit("  move $t0, $v0");
             loadRegToOp("$t0", i->arg3);
             break;
+
         default:
-            emit("  # Unsupported opcode %d", i->opcode);
+            emit("  # ERROR: Unsupported opcode %d", i->opcode);
             break;
         }
     }
