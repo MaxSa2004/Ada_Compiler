@@ -72,25 +72,46 @@ static void scanInstrs(Instr *head)
         for (int i = 0; i < 3; i++)
         {
             Op *op = &ops[i];
+
+            /* update highest temp id when we see a temp */
             if (op->kind == OP_TEMP)
             {
                 if (op->contents.temp_id > highest_temp_id)
                 {
                     highest_temp_id = op->contents.temp_id;
                 }
+                continue;
             }
-            else if (op->kind == OP_VAR)
-            {
-                if (op->contents.name)
-                {
-                    addVar(op->contents.name);
-                }
-            }
-            else if (op->kind == OP_CONST_STRING)
+
+            /* collect string constants as before */
+            if (op->kind == OP_CONST_STRING)
             {
                 if (op->contents.sval)
                 {
                     addString(op->contents.sval);
+                }
+                continue;
+            }
+
+            /* for OP_VAR, only add to var_list if this occurrence is actually a data variable,
+               not a label. In our IR the following are label positions and should be skipped:
+               - opcode == OP_LABEL and i == 2 (arg3 is the label name)
+               - opcode == OP_JUMP and i == 2 (jump target)
+               - opcode == OP_JUMP_FALSE and i == 2 (jump target)
+
+               Otherwise, treat OP_VAR as a real variable and add it to var_list.
+            */
+            if (op->kind == OP_VAR)
+            {
+                int is_label_pos = 0;
+                if ((instr->opcode == OP_LABEL || instr->opcode == OP_JUMP || instr->opcode == OP_JUMP_FALSE) && i == 2)
+                {
+                    is_label_pos = 1;
+                }
+
+                if (!is_label_pos && op->contents.name)
+                {
+                    addVar(op->contents.name);
                 }
             }
         }
@@ -100,11 +121,23 @@ static void scanInstrs(Instr *head)
 // escape double quotes and backslashes for .asciiz
 static char *escapeStringForASCIIZ(const char *s)
 {
-    size_t len = strlen(s);
+    if (!s)
+    {
+        /* return an empty string (caller frees) */
+        char *e = malloc(1);
+        if (e)
+            e[0] = '\0';
+        return e;
+    }
 
+    size_t len = strlen(s);
+    /* worst-case every char becomes two bytes (\" or \\ or \n) */
     char *out = (char *)malloc(len * 2 + 1);
+    if (!out)
+        return NULL;
+
     char *w = out;
-    for (const char *i = s; i; i++)
+    for (const char *i = s; *i; ++i)
     {
         if (*i == '\\' || *i == '"')
         {
