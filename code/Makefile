@@ -3,7 +3,7 @@ CFLAGS = -Wall -g
 BISON = bison
 FLEX = flex
 
-SRCS = main.c ast.c ast_debug.c symbolTable.c codeGenerator.c
+SRCS = main.c ast.c ast_debug.c symbolTable.c codeGenerator.c mips_backend.c
 PARSER_SRC = parser.y
 LEXER_SRC = lexer.x
 
