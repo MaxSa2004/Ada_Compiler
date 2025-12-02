@@ -55,7 +55,7 @@ static char *strip_extension(const char *filename)
 }
 
 // build output path test_outputs/<base>MIPS.s
-static char *build_output_path(const char *inputPath)
+/* static char *build_output_path(const char *inputPath)
 {
   const char *base = basename_only(inputPath);
   char *stem = strip_extension(base ? base : "stdin");
@@ -81,7 +81,7 @@ static char *build_output_path(const char *inputPath)
   snprintf(outPath, needed, "test_outputs/%sMIPS.s", stem);
   free(stem);
   return outPath;
-}
+} */
 
 int main(int argc, char **argv)
 {
@@ -122,13 +122,14 @@ int main(int argc, char **argv)
     printSymbolTable(symTable);
 
     init_code_generator();
-    allocate_var_temps_from_table(symTable);
+    /* allocate_var_temps_from_table(symTable);
     printVarTemps();
-    emit_var_prologue();
+    emit_var_prologue(); */
     transStm(root);
-    printTAC(instr_head);
 
-    char *outPath = build_output_path(input);
+
+
+    /* char *outPath = build_output_path(input);
     if (!outPath)
     {
       fprintf(stderr, "Error: could not build output path. Using default 'outputMIPS.s'\n");
@@ -139,7 +140,7 @@ int main(int argc, char **argv)
       generateMIPS(instr_head, outPath);
       printf("MIPS code written to: %s\n", outPath);
       free(outPath);
-    }
+    } */
 
     free_stm(root);
     free_table(symTable);

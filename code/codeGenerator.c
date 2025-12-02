@@ -1,803 +1,554 @@
-// função transExpr : (Exp, Table, Temp) -> [Instr] recebe o destino onde colocar o resultado
-// função transStm : (Stm, Table) -> [Instr]
-// função transCond para compilar condições: transCond : (Cond, Table, Label(t), Label(f)) -> [Instr]
-// função transArgs : (Exps, table) -> ...s
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "codeGenerator.h"
-// gerar temporários e etiquetas
-Instr *instr_head = NULL, *instr_tail = NULL;
-int temp_count = 0, label_count = 0;
-void emit(Opcode op, Op dest, Op arg1, Op arg2);
-// static const char *getOpCodeString(Opcode op);
-typedef struct VarTemp
-{
-    char *name;
-    Op temp;
-    struct VarTemp *next;
-} VarTemp;
-static VarTemp *var_temp_head = NULL;
-static VarTemp *var_temp_tail = NULL;
 
-static Op getVarTemp(char *name)
-{
-    VarTemp *curr = var_temp_head;
-    while (curr)
-    {
-        if (strcmp(curr->name, name) == 0)
-        {
-            return curr->temp;
-        }
-        curr = curr->next;
-    }
-    Op temp = {0};
-    temp.kind = OP_TEMP;
-    temp.contents.temp_id = temp_count++;
-    VarTemp *new_var_temp = (VarTemp *)malloc(sizeof(VarTemp));
-    new_var_temp->name = strdup(name);
-    new_var_temp->temp = temp;
-    new_var_temp->next = NULL;
-    if (var_temp_tail == NULL)
-    {
-        var_temp_head = var_temp_tail = new_var_temp;
-    }
-    else
-    {
-        var_temp_tail->next = new_var_temp;
-        var_temp_tail = new_var_temp;
-    }
-    return temp;
+CodeGenState cg_state = (CodeGenState){0};
+
+static char *strdup_safe(const char *s){
+    if (!s) return NULL;
+    size_t n = strlen(s) + 1;
+    char *p = (char *)malloc(n);
+    if(!p) return NULL;
+    memcpy(p, s, n);
+    return p;
 }
 
-static void freeVarTemps()
-{
-    VarTemp *curr = var_temp_head;
-    while (curr)
-    {
-        VarTemp *next = curr->next;
-        if (curr->name)
-            free(curr->name);
-        free(curr);
-        curr = next;
+/* Lista de instruções */
+InstrList *new_instr_list(void){
+    InstrList *list = (InstrList *)malloc(sizeof(InstrList));
+    if (!list) return NULL;
+    list->head = NULL;
+    list->tail = NULL;
+    list->size = 0;
+    return list;
+}
+
+void append_instr(InstrList *list, Instr *instr){
+    if (!list || !instr) return;
+    InstrNode *node = (InstrNode *)malloc(sizeof(InstrNode));
+    if (!node) return;
+    node->instr = instr;
+    node->next = NULL;
+    if (!list->head) {
+        list->head = list->tail = node;
+    } else {
+        list->tail->next = node;
+        list->tail = node;
     }
-    var_temp_head = NULL;
+    list->size++;
 }
 
-// criar operador temporário
-Op newTemp()
-{
-    Op op;
-    op.kind = OP_TEMP;
-    op.contents.temp_id = temp_count++;
-    return op;
+Instr *get_first(const InstrList *list){
+    if (!list || !list->head) return NULL;
+    return list->head->instr;
 }
 
-// criar operador label
-Op newLabel()
-{
-    Op op;
-    op.kind = OP_VAR;
-    char buffer[20];
-    snprintf(buffer, sizeof(buffer), "Label%d", label_count++);
-    op.contents.name = strdup(buffer);
-    return op;
+InstrNode *next_instrs(const InstrNode *node){
+    if (!node) return NULL;
+    return node->next;
 }
 
-Op newVar(char *name)
-{
-    Op op;
-    op.kind = OP_VAR;
-    op.contents.name = strdup(name);
-    return op;
+InstrList *get_instr_list(void){
+    return cg_state.instructions;
 }
 
-// criar operador constante
-Op newConstInt(int val)
-{
-    Op op;
-    op.kind = OP_CONST_INT;
-    op.contents.ival = val;
-    return op;
+/* Inicialização */
+void init_code_generator(void){
+    cg_state.instructions = new_instr_list();
+    cg_state.temp_count = 0;
+    cg_state.label_count = 0;
 }
 
-Op newConstFloat(double f)
-{
-    Op op;
-    op.kind = OP_CONST_FLOAT;
-    op.contents.fval = f;
-    return op;
-}
-
-Op newConstString(char *s)
-{
-    Op op;
-    op.kind = OP_CONST_STRING;
-    op.contents.sval = strdup(s);
-    return op;
-}
-
-void init_code_generator()
-{
-    instr_head = NULL;
-    instr_tail = NULL;
-    temp_count = 0;
-    label_count = 0;
-}
-
-void emit(Opcode op, Op dest, Op arg1, Op arg2)
-{
-    Instr *new_instr = (Instr *)malloc(sizeof(Instr));
-    new_instr->opcode = op;
-    new_instr->arg3 = dest;
-    new_instr->arg1 = arg1;
-    new_instr->arg2 = arg2;
-    new_instr->next = NULL;
-    if (instr_head == NULL)
-    {
-        instr_head = new_instr;
-        instr_tail = new_instr;
-    }
-    else
-    {
-        instr_tail->next = new_instr;
-        instr_tail = new_instr;
-    }
-    // fprintf(stderr, "Emitted instruction: %s\n", getOpCodeString(op));
-}
-
-Op transExpr(Exp exp)
-{
-    Op dest, t1, t2;
-    Op empty = {0};
-    if (!exp)
-        return empty;
-
-    switch (exp->exp_t)
-    {
-    case NUMEXP:
-    {
-        Op c = newConstInt(exp->fields.num);
-        Op dest = newTemp();
-        emit(OP_MOVE, dest, c, empty);
-        return dest;
-    }
-
-    case FLOATEXP:
-    {
-        Op c = newConstFloat(exp->fields.fnum);
-        Op dest = newTemp();
-        emit(OP_MOVE, dest, c, empty);
-        return dest;
-    }
-    case IDEXP:
-        return getVarTemp(exp->fields.ident);
-    case STREXP:
-    {
-        Op s = newConstString(exp->fields.string);
-        return s;
-    }
-
-    case BOOLEXP:
-    {
-        Op dest = newTemp();
-        if (exp->fields.boolVal)
-        {
-            Op one = newConstInt(1);
-            emit(OP_MOVE, dest, one, empty);
-        }
-        else
-        {
-            Op zero = newConstInt(0);
-            emit(OP_MOVE, dest, zero, empty);
-        }
-        return dest;
-    }
-
-    case UNOEXP:
-        t1 = transExpr(exp->fields.unoexp.child);
-        dest = newTemp();
-        if (exp->fields.unoexp.op == NOTexp)
-        {
-            emit(OP_NOT, dest, t1, empty);
-        }
-        else
-        {
-            emit(OP_NEG, dest, t1, empty);
-        }
-        return dest;
-    case OPEXP:
-        t1 = transExpr(exp->fields.opexp.left);
-        t2 = transExpr(exp->fields.opexp.right);
-        dest = newTemp();
-        Opcode op;
-        switch (exp->fields.opexp.op)
-        {
-        case SUM:
-            op = OP_ADD;
-            break;
-        case SUB:
-            op = OP_SUB;
-            break;
-        case TIMES:
-            op = OP_MUL;
-            break;
-        case DIVISION:
-            op = OP_DIV;
-            break;
-        case MODULUS:
-            op = OP_MOD;
-            break;
-        case REMAINDER:
-            op = OP_REM;
-            break;
-        case POW:
-            op = OP_POW;
-            break;
-        case EQUAL:
-            op = OP_EQ;
-            break;
-        case INEQUAL:
-            op = OP_NEQ;
-            break;
-        case LESSexp:
-            op = OP_LT;
-            break;
-        case GREATERexp:
-            op = OP_GT;
-            break;
-        case LEQexp:
-            op = OP_LEQ;
-            break;
-        case GEQexp:
-            op = OP_GEQ;
-            break;
-        case ORexp:
-            op = OP_OR;
-            break;
-        case ANDexp:
-            op = OP_AND;
-            break;
-        case XORexp:
-            op = OP_XOR;
-            break;
-
-        default:
-            op = OP_ADD;
-            break; // default case
-        }
-        emit(op, dest, t1, t2);
-        return dest;
-    case PAREXP:
-        return transExpr(exp->fields.parexp.inner);
-    default:
-        fprintf(stderr, "Unknown expression type\n");
-        return empty;
+/* Libertação */
+static void free_atom(Atom *a){
+    if(!a) return;
+    if(a->kind == ATOM_VAR && a->contents.name) {
+        free(a->contents.name);
+        a->contents.name = NULL;
+    } else if(a->kind == ATOM_STRING && a->contents.sval) {
+        free(a->contents.sval);
+        a->contents.sval = NULL;
     }
 }
 
-void transCond(Exp exp, Op labelT, Op labelF)
-{
-    Op t1, t2;
-    Op empty = {0};
-    if (exp->exp_t == OPEXP)
-    {
-        t1 = transExpr(exp->fields.opexp.left);
-        t2 = transExpr(exp->fields.opexp.right);
-        Op dest = newTemp();
-        Opcode op;
-        switch (exp->fields.opexp.op)
-        {
-        case EQUAL:
-            op = OP_EQ;
+void free_instr(Instr *instr){
+    if(!instr) return;
+    if(instr->dest) free(instr->dest);
+    if(instr->label_true) free(instr->label_true);
+    if(instr->label_false) free(instr->label_false);
+    free_atom(&instr->arg1);
+    free_atom(&instr->arg2);
+    free_atom(&instr->cond);
+    free_atom(&instr->rel_left);
+    free_atom(&instr->rel_right);
+    free(instr);
+}
+
+void free_instr_list(InstrList *list){
+    if(!list) return;
+    InstrNode *n = list->head;
+    while(n){
+        InstrNode *next = n->next;
+        free_instr(n->instr);
+        free(n);
+        n = next;
+    }
+    free(list);
+}
+
+void free_code_generator(void){
+    if(cg_state.instructions){
+        free_instr_list(cg_state.instructions);
+        cg_state.instructions = NULL;
+    }
+    cg_state.temp_count = 0;
+    cg_state.label_count = 0;
+}
+
+/* Átomos */
+Atom atom_var(const char *name){
+    Atom a; a.kind = ATOM_VAR; a.contents.name = strdup_safe(name); return a;
+}
+Atom atom_number(int value){
+    Atom a; a.kind = ATOM_NUMBER; a.contents.ival = value; return a;
+}
+Atom atom_float(double value){
+    Atom a; a.kind = ATOM_FLOAT; a.contents.fval = value; return a;
+}
+Atom atom_string(const char *value){
+    Atom a; a.kind = ATOM_STRING; a.contents.sval = strdup_safe(value); return a;
+}
+Atom atom_boolean(int value){
+    Atom a; a.kind = ATOM_BOOLEAN; a.contents.ival = value ? 1 : 0; return a;
+}
+Atom atom_temp(int temp_id){
+    Atom a; a.kind = ATOM_TEMP; a.contents.temp_id = temp_id; return a;
+}
+Atom new_temp(void){
+    int id = cg_state.temp_count++;
+    return atom_temp(id);
+}
+
+/* Emissores */
+static Instr *new_instr(instrop op){
+    Instr *i = (Instr*)malloc(sizeof(Instr));
+    if(!i) return NULL;
+    memset(i, 0, sizeof(Instr));
+    i->iop = op;
+    return i;
+}
+
+Instr *emit2(const char *dest, Atom src){
+    Instr *i = new_instr(OP_ASSIGN);
+    if(!i) return NULL;
+    i->dest = strdup_safe(dest);
+    i->arg1 = src;
+    i->has_binop = false;
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+Instr *emit3_binop(const char *dest, Atom arg1, binop op, Atom arg2){
+    Instr *i = new_instr(OP_ASSIGN);
+    if(!i) return NULL;
+    i->dest = strdup_safe(dest);
+    i->arg1 = arg1;
+    i->arg2 = arg2;
+    i->has_binop = true;
+    i->bop = op;
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+/* Pseudo-instrução COND para impressão compacta */
+Instr *emit3_relop(Atom arg1, relop op, Atom arg2, const char *true_label, const char *false_label){
+    Instr *i = new_instr(OP_COND);
+    if(!i) return NULL;
+    i->rel_left = arg1;
+    i->rel_right = arg2;
+    i->rop = op;
+    i->label_true = strdup_safe(true_label);
+    i->label_false = strdup_safe(false_label);
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+Instr *emit_label(const char *label){
+    Instr *i = new_instr(OP_LABEL);
+    if(!i) return NULL;
+    i->dest = strdup_safe(label);
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+Instr *emit_jump(const char *label){
+    Instr *i = new_instr(OP_JUMP);
+    if(!i) return NULL;
+    i->dest = strdup_safe(label);
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+Instr *emit_jump_false(Atom cond, const char *label){
+    Instr *i = new_instr(OP_JUMP_FALSE);
+    if(!i) return NULL;
+    i->cond = cond;
+    i->dest = strdup_safe(label);
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+Instr *emit_print(Atom value){
+    Instr *i = new_instr(OP_PRINT);
+    if(!i) return NULL;
+    i->arg1 = value;
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+Instr *emit_read(const char *var_name){
+    Instr *i = new_instr(OP_READ);
+    if(!i) return NULL;
+    i->dest = strdup_safe(var_name);
+    append_instr(cg_state.instructions, i);
+    return i;
+}
+
+/* Impressão */
+static const char *binop_to_str(binop op){
+    switch(op){
+        case BINOP_ADD: return "+";
+        case BINOP_SUB: return "-";
+        case BINOP_MUL: return "*";
+        case BINOP_DIV: return "/";
+        case BINOP_MOD: return "%";
+        case BINOP_REM: return "rem";
+        case BINOP_POW: return "^";
+        case BINOP_AND: return "AND";
+        case BINOP_OR:  return "OR";
+        case BINOP_XOR: return "XOR";
+        default: return "?";
+    }
+}
+static const char *relop_to_str(relop op){
+    switch(op){
+        case RELOP_EQ:  return "==";
+        case RELOP_NEQ: return "!=";
+        case RELOP_LT:  return "<";
+        case RELOP_GT:  return ">";
+        case RELOP_LEQ: return "<=";
+        case RELOP_GEQ: return ">=";
+        default: return "?";
+    }
+}
+static void print_atom(const Atom *a){
+    if(!a){printf("(null)"); return;}
+    switch(a->kind){
+        case ATOM_VAR:    printf("%s", a->contents.name ? a->contents.name : "(var-null)"); break;
+        case ATOM_NUMBER: printf("%d", a->contents.ival); break;
+        case ATOM_FLOAT:  printf("%g", a->contents.fval); break;
+        case ATOM_STRING: printf("\"%s\"", a->contents.sval ? a->contents.sval : ""); break;
+        case ATOM_BOOLEAN:printf("%d", a->contents.ival ? 1 : 0); break;
+        case ATOM_TEMP:   printf("t%d", a->contents.temp_id); break;
+        default:          printf("(unknown atom)"); break;
+    }
+}
+void print_instr(const Instr *instr){
+    if(!instr) {printf("(null-instr)\n"); return;}
+    switch(instr->iop){
+        case OP_ASSIGN:
+            printf("%s := ", instr->dest ? instr->dest : "(null-dest)");
+            print_atom(&instr->arg1);
+            if(instr->has_binop){
+                printf(" %s ", binop_to_str(instr->bop));
+                print_atom(&instr->arg2);
+            }
+            printf("\n");
             break;
-        case INEQUAL:
-            op = OP_NEQ;
+        case OP_LABEL:
+            printf("LABEL %s\n", instr->dest ? instr->dest : "(null-label)");
             break;
-        case LESSexp:
-            op = OP_LT;
+        case OP_JUMP:
+            printf("JUMP %s\n", instr->dest ? instr->dest : "(null-label)");
             break;
-        case GREATERexp:
-            op = OP_GT;
+        case OP_JUMP_FALSE:
+            printf("JUMP_FALSE ");
+            print_atom(&instr->cond);
+            printf(" %s\n", instr->dest ? instr->dest : "(null-label)");
             break;
-        case LEQexp:
-            op = OP_LEQ;
+        case OP_PRINT:
+            printf("PUT ");
+            print_atom(&instr->arg1);
+            printf("\n");
             break;
-        case GEQexp:
-            op = OP_GEQ;
+        case OP_READ:
+            printf("GET %s\n", instr->dest ? instr->dest : "(null-dest)");
             break;
-        case ANDexp:
-        case ORexp:
-        case XORexp:
-            op = (exp->fields.opexp.op == ANDexp) ? OP_AND : (exp->fields.opexp.op == ORexp) ? OP_OR
-                                                                                             : OP_XOR;
+        case OP_COND:
+            printf("COND ");
+            print_atom(&instr->rel_left);
+            printf(" %s ", relop_to_str(instr->rop));
+            print_atom(&instr->rel_right);
+            printf(" %s %s\n",
+                   instr->label_true ? instr->label_true : "(null-true)",
+                   instr->label_false ? instr->label_false : "(null-false)");
             break;
         default:
-            op = OP_NEQ;
+            printf("(unknown-instr)\n");
+    }
+}
+void print_instr_list(const InstrList *list){
+    if(!list) {printf("(null-instr-list)\n"); return;}
+    for (InstrNode *n = list->head; n; n = n->next) {
+        print_instr(n->instr);
+    }
+}
+
+/* Helpers de mapeamento do AST (ajusta para nomes reais do teu ast.h) */
+static const char* lookup_var_name(const char *id, Table table){
+    (void)table;
+    return id ? id : "(null-id)";
+}
+static int map_ast_binop_to_binop(int ast_op, binop *out){
+    switch(ast_op){
+        case SUM:        *out = BINOP_ADD; return 1;
+        case SUB:        *out = BINOP_SUB; return 1;
+        case TIMES:      *out = BINOP_MUL; return 1;
+        case DIVISION:   *out = BINOP_DIV; return 1;
+        case MODULUS:    *out = BINOP_MOD; return 1;
+        case REMAINDER:  *out = BINOP_REM; return 1;
+        case POW:        *out = BINOP_POW; return 1;
+        case ANDexp:     *out = BINOP_AND; return 1;
+        case ORexp:      *out = BINOP_OR;  return 1;
+        case XORexp:     *out = BINOP_XOR; return 1;
+        default: return 0;
+    }
+}
+static int map_ast_relop_to_relop(int ast_op, relop *out){
+    switch(ast_op){
+        case EQUAL:      *out = RELOP_EQ;  return 1;
+        case INEQUAL:    *out = RELOP_NEQ; return 1;
+        case LESSexp:    *out = RELOP_LT;  return 1;
+        case GREATERexp: *out = RELOP_GT;  return 1;
+        case LEQexp:     *out = RELOP_LEQ; return 1;
+        case GEQexp:     *out = RELOP_GEQ; return 1;
+        default: return 0;
+    }
+}
+
+/* Compiladores de expressão/condição */
+static void compileExpr(Exp e, Table table, const char* dest_name);
+
+static void compileCond(Exp e, Table table, const char *labelT, const char *labelF){
+    if(!e) {emit_jump(labelF); return;}
+    switch(e->exp_t){
+        case BOOLEXP:
+            if(e->fields.boolVal) emit_jump(labelT);
+            else emit_jump(labelF);
+            break;
+        case UNOEXP:
+            if(e->fields.unoexp.op == NOTexp){
+                compileCond(e->fields.unoexp.child, table, labelF, labelT);
+            } else {
+                Atom t = new_temp();
+                char tn[32]; snprintf(tn, sizeof(tn), "t%d", t.contents.temp_id);
+                compileExpr(e->fields.unoexp.child, table, tn);
+                emit3_relop(t, RELOP_NEQ, atom_number(0), labelT, labelF);
+            }
+            break;
+        case OPEXP: {
+            int op = e->fields.opexp.op;
+            relop rop;
+            if (map_ast_relop_to_relop(op, &rop)) {
+                Atom t1 = new_temp(), t2 = new_temp();
+                char t1n[32], t2n[32];
+                snprintf(t1n, sizeof(t1n), "t%d", t1.contents.temp_id);
+                snprintf(t2n, sizeof(t2n), "t%d", t2.contents.temp_id);
+                compileExpr(e->fields.opexp.left, table, t1n);
+                compileExpr(e->fields.opexp.right, table, t2n);
+                /* Apenas COND para o formato do prof; não emitir JUMPs aqui */
+                emit3_relop(t1, rop, t2, labelT, labelF);
+            } else if (op == ANDexp) {
+                char Lmid[32]; snprintf(Lmid, sizeof(Lmid), "L%d", cg_state.label_count++);
+                compileCond(e->fields.opexp.left, table, Lmid, labelF);
+                emit_label(Lmid);
+                compileCond(e->fields.opexp.right, table, labelT, labelF);
+            } else if (op == ORexp) {
+                char Lmid[32]; snprintf(Lmid, sizeof(Lmid), "L%d", cg_state.label_count++);
+                compileCond(e->fields.opexp.left, table, labelT, Lmid);
+                emit_label(Lmid);
+                compileCond(e->fields.opexp.right, table, labelT, labelF);
+            } else if (op == XORexp) {
+                /* simplificação: (a && !b) || (!a && b) */
+                char Lmid[32]; snprintf(Lmid, sizeof(Lmid), "L%d", cg_state.label_count++);
+                compileCond(e->fields.opexp.left, table, Lmid, labelF);
+                emit_label(Lmid);
+                compileCond(e->fields.opexp.right, table, labelF, labelT); /* !b */
+                /* Para impressão estilo prof, não emitimos jumps aqui */
+            } else {
+                /* expressão aritmética como condição: exp != 0 */
+                Atom t = new_temp();
+                char tn[32]; snprintf(tn, sizeof(tn), "t%d", t.contents.temp_id);
+                compileExpr(e->fields.opexp.left, table, tn);
+                emit3_relop(t, RELOP_NEQ, atom_number(0), labelT, labelF);
+            }
             break;
         }
-        emit(op, dest, t1, t2);
-        emit(OP_JUMP_FALSE, labelF, dest, empty);
-        emit(OP_JUMP, labelT, empty, empty);
-        return;
-    }
-    if (exp->exp_t == UNOEXP && exp->fields.unoexp.op == NOTexp)
-    {
-        transCond(exp->fields.unoexp.child, labelF, labelT);
-        return;
-    }
-    Op condVal = transExpr(exp);
-    Op zero = newConstInt(0);
-    Op cmp = newTemp();
-    emit(OP_NEQ, cmp, condVal, zero);
-    emit(OP_JUMP_FALSE, labelF, cmp, empty);
-    emit(OP_JUMP, labelT, empty, empty);
-}
-
-void transStm(Stm s)
-{
-    Op empty = {0};
-    if (!s)
-        return;
-
-    // fprintf(stderr, "Translating statement of type %d\n", s->stm_t);
-    switch (s->stm_t)
-    {
-    case ASSIGNSTM:
-    {
-        Op right = transExpr(s->fields.assign.exp);
-        Op left = getVarTemp(s->fields.assign.ident);
-        emit(OP_MOVE, left, right, empty);
-        break;
-    }
-    case COMPOUNDSTM:
-        transStm(s->fields.compound.fst);
-        transStm(s->fields.compound.snd);
-        break;
-    case IFSTM:
-    {
-        Op thenLabel = newLabel();
-        Op elseLabel = newLabel();
-        Op endLabel = newLabel();
-        Op empty = (Op){0};
-        transCond(s->fields.ifstm.cond, thenLabel, elseLabel);
-        emit(OP_LABEL, thenLabel, empty, empty);
-        transStm(s->fields.ifstm.then_branch);
-        emit(OP_JUMP, endLabel, empty, empty);
-
-        emit(OP_LABEL, elseLabel, empty, empty);
-        if (s->fields.ifstm.else_branch)
-        {
-            transStm(s->fields.ifstm.else_branch);
+        case PAREXP:
+            compileCond(e->fields.parexp.inner, table, labelT, labelF);
+            break;
+        default: {
+            Atom t = new_temp();
+            char tn[32]; snprintf(tn, sizeof(tn), "t%d", t.contents.temp_id);
+            compileExpr(e, table, tn);
+            emit3_relop(t, RELOP_NEQ, atom_number(0), labelT, labelF);
+            break;
         }
-        emit(OP_LABEL, endLabel, empty, empty);
-        break;
-    }
-    case WHILESTM:
-    {
-        Op startLabel = newLabel();
-        Op bodyLabel = newLabel();
-        Op endLabel = newLabel();
-        Op empty = (Op){0};
-        emit(OP_LABEL, startLabel, empty, empty);
-        transCond(s->fields.whilestm.cond, bodyLabel, endLabel);
-        emit(OP_LABEL, bodyLabel, empty, empty);
-        transStm(s->fields.whilestm.branch);
-        emit(OP_JUMP, startLabel, empty, empty);
-        emit(OP_LABEL, endLabel, empty, empty);
-        break;
-    }
-    case PUTSTM:
-    {
-        Op val = transExpr(s->fields.putstm.output);
-        emit(OP_PRINT, val, empty, empty);
-        break;
-    }
-    case GETSTM:
-    {
-        Op dest = getVarTemp(s->fields.getstm.ident);
-        emit(OP_READ, dest, empty, empty);
-        break;
-    }
-    case PROCSTM:
-        transStm(s->fields.proc.statements);
-        break;
-    default:
-        break;
     }
 }
 
-void printOp(Op op)
-{
-    switch (op.kind)
-    {
-    case OP_TEMP:
-        printf("t%d ", op.contents.temp_id);
-        break;
-    case OP_VAR:
-        printf("%s ", op.contents.name);
-        break;
-    case OP_CONST_INT:
-        printf("%d ", op.contents.ival);
-        break;
-    case OP_CONST_FLOAT:
-        printf("%g ", op.contents.fval);
-        break;
-    case OP_CONST_STRING:
-        printf("\"%s\"", op.contents.sval);
-        break;
-    default:
-        printf("unknown_op");
-    }
-}
-
-/* static const char *getOpCodeString(Opcode op)
-{
-    switch (op)
-    {
-    case OP_ADD:
-        return "ADD";
-    case OP_SUB:
-        return "SUB";
-    case OP_MUL:
-        return "MUL";
-    case OP_DIV:
-        return "DIV";
-    case OP_MOD:
-        return "MOD";
-    case OP_REM:
-        return "REM";
-    case OP_POW:
-        return "POW";
-    case OP_AND:
-        return "AND";
-    case OP_OR:
-        return "OR";
-    case OP_NOT:
-        return "NOT";
-    case OP_XOR:
-        return "XOR";
-    case OP_NEG:
-        return "NEG";
-    case OP_MOVE:
-        return "MOVE";
-    case OP_LOAD:
-        return "LOAD";
-    case OP_LABEL:
-        return "LABEL";
-    case OP_JUMP:
-        return "JUMP";
-    case OP_JUMP_FALSE:
-        return "JUMP_FALSE";
-    case OP_PRINT:
-        return "PRINT";
-    case OP_READ:
-        return "READ";
-    case OP_EQ:
-        return "EQ";
-    case OP_NEQ:
-        return "NEQ";
-    case OP_LT:
-        return "LT";
-    case OP_GT:
-        return "GT";
-    case OP_LEQ:
-        return "LEQ";
-    case OP_GEQ:
-        return "GEQ";
-    default:
-        return "UNKNOWN_OPCODE";
-    }
-} */
-
-static const char *arith_symbol(Opcode op)
-{
-    switch (op)
-    {
-    case OP_ADD:
-        return "+";
-    case OP_SUB:
-        return "-";
-    case OP_MUL:
-        return "*";
-    case OP_DIV:
-        return "/";
-    case OP_MOD:
-        return "%";
-    case OP_REM:
-        return "rem";
-    case OP_POW:
-        return "^";
-    case OP_AND:
-        return "and";
-    case OP_OR:
-        return "or";
-    case OP_XOR:
-        return "xor";
-
-    default:
-        return "NULL";
-    }
-}
-
-static const char *rel_symbol(Opcode op)
-{
-    switch (op)
-    {
-    case OP_EQ:
-        return "==";
-    case OP_NEQ:
-        return "!=";
-    case OP_LT:
-        return "<";
-    case OP_GT:
-        return ">";
-    case OP_LEQ:
-        return "<=";
-    case OP_GEQ:
-        return ">=";
-    default:
-        return "NULL";
-    }
-}
-
-void printTAC(Instr *head)
-{
-    Instr *curr = head;
-    printf("\nThree Address Code:\n");
-
-    while (curr)
-    {
-        // COND: relational + JUMP_FALSE -> COND left rel_op right true_label false_label
-        if ((curr->opcode == OP_EQ || curr->opcode == OP_NEQ ||
-             curr->opcode == OP_LT || curr->opcode == OP_GT ||
-             curr->opcode == OP_LEQ || curr->opcode == OP_GEQ) &&
-            curr->next && curr->next->opcode == OP_JUMP_FALSE)
-        {
-            Instr *rel = curr;
-            Instr *jf = rel->next;
-            int match_temp = 0;
-            if (jf->arg1.kind == OP_TEMP && rel->arg3.kind == OP_TEMP &&
-                jf->arg1.contents.temp_id == rel->arg3.contents.temp_id)
-            {
-                match_temp = 1;
+static void compileExpr(Exp e, Table table, const char* dest_name){
+    if(!e || !dest_name) return;
+    switch(e->exp_t){
+        case NUMEXP: emit2(dest_name, atom_number(e->fields.num)); break;
+        case FLOATEXP: emit2(dest_name, atom_float(e->fields.fnum)); break;
+        case STREXP: emit2(dest_name, atom_string(e->fields.string)); break;
+        case BOOLEXP: emit2(dest_name, atom_boolean(e->fields.boolVal ? 1 : 0)); break;
+        case IDEXP: {
+            const char *var_name = lookup_var_name(e->fields.ident, table);
+            emit2(dest_name, atom_var(var_name));
+            break;
+        }
+        case UNOEXP: {
+            Atom t1 = new_temp();
+            char t1n[32]; snprintf(t1n, sizeof(t1n), "t%d", t1.contents.temp_id);
+            compileExpr(e->fields.unoexp.child, table, t1n);
+            if(e->fields.unoexp.op == NOTexp){
+                /* dest := 1/0 via cond */
+                char Ltrue[32], Lfalse[32], Lend[32];
+                snprintf(Ltrue, sizeof(Ltrue), "L%d", cg_state.label_count++);
+                snprintf(Lfalse, sizeof(Lfalse), "L%d", cg_state.label_count++);
+                snprintf(Lend,  sizeof(Lend),  "L%d", cg_state.label_count++);
+                emit3_relop(t1, RELOP_NEQ, atom_number(0), Ltrue, Lfalse);
+                emit_label(Ltrue);
+                emit2(dest_name, atom_number(1));
+                emit_jump(Lend);
+                emit_label(Lfalse);
+                emit2(dest_name, atom_number(0));
+                emit_label(Lend);
+            } else {
+                /* NEG: dest := 0 - t1 */
+                emit3_binop(dest_name, atom_number(0), BINOP_SUB, t1);
             }
-            if (match_temp)
-            {
-                const char *else_label = (jf->arg3.kind == OP_VAR && jf->arg3.contents.name) ? jf->arg3.contents.name : "(no_false)";
-                const char *true_label = NULL;
-                if (jf->next && jf->next->opcode == OP_JUMP && jf->next->arg3.kind == OP_VAR)
-                {
-                    true_label = jf->next->arg3.contents.name;
-                    printf("\tCOND ");
-                    printOp(rel->arg1);
-                    printf(" %s ", rel_symbol(rel->opcode));
-                    printOp(rel->arg2);
-                    printf("%s %s\n", true_label, else_label);
-                    curr = jf->next->next;
-                    continue;
-                }
-                if (jf->next && jf->next->opcode == OP_LABEL && jf->next->arg3.kind == OP_VAR)
-                {
-                    true_label = jf->next->arg3.contents.name;
-                    printf("\tCOND ");
-                    printOp(rel->arg1);
-                    printf(" %s ", rel_symbol(rel->opcode));
-                    printOp(rel->arg2);
-                    printf("%s %s\n", true_label, else_label);
-                    curr = jf->next;
-                    continue;
-                }
-                printf("\tCOND ");
-                printOp(rel->arg1);
-                printf(" %s ", rel_symbol(rel->opcode));
-                printOp(rel->arg2);
-                printf("(true) %s\n", else_label);
-                curr = jf->next;
-                continue;
+            break;
+        }
+        case OPEXP: {
+            binop bop;
+            if(map_ast_binop_to_binop(e->fields.opexp.op, &bop)){
+                Atom t1 = new_temp(), t2 = new_temp();
+                char t1n[32], t2n[32];
+                snprintf(t1n, sizeof(t1n), "t%d", t1.contents.temp_id);
+                snprintf(t2n, sizeof(t2n), "t%d", t2.contents.temp_id);
+                compileExpr(e->fields.opexp.left, table, t1n);
+                compileExpr(e->fields.opexp.right, table, t2n);
+                emit3_binop(dest_name, t1, bop, t2);
+            } else {
+                /* Relacionais/lógicos: dest := 1/0 via cond */
+                char Ltrue[32], Lfalse[32], Lend[32];
+                snprintf(Ltrue, sizeof(Ltrue), "L%d", cg_state.label_count++);
+                snprintf(Lfalse, sizeof(Lfalse), "L%d", cg_state.label_count++);
+                snprintf(Lend,  sizeof(Lend),  "L%d", cg_state.label_count++);
+                compileCond(e, table, Ltrue, Lfalse);
+                emit_label(Ltrue);
+                emit2(dest_name, atom_number(1));
+                emit_jump(Lend);
+                emit_label(Lfalse);
+                emit2(dest_name, atom_number(0));
+                emit_label(Lend);
             }
+            break;
         }
-        // LABEL:
-        if (curr->opcode == OP_LABEL)
-        {
-            if (curr->arg3.kind == OP_VAR && curr->arg3.contents.name)
-            {
-                printf("%s:\n", curr->arg3.contents.name);
+        case PAREXP:
+            compileExpr(e->fields.parexp.inner, table, dest_name);
+            break;
+        default:
+            emit2(dest_name, atom_number(0));
+            break;
+    }
+}
+
+/* API mantida */
+Atom transExpr(Exp e){
+    Atom dest = new_temp();
+    char buf[32];
+    snprintf(buf, sizeof(buf), "t%d", dest.contents.temp_id);
+    compileExpr(e, NULL, buf);
+    return dest;
+}
+void transCond(Exp e, Atom labelF, Atom labelT){
+    const char *lf = (labelF.kind == ATOM_VAR && labelF.contents.name) ? labelF.contents.name : "LFalse";
+    const char *lt = (labelT.kind == ATOM_VAR && labelT.contents.name) ? labelT.contents.name : "LTrue";
+    compileCond(e, NULL, lt, lf);
+}
+
+/* Statements, com while a imprimir loop/cond/end */
+void transStm(Stm s){
+    if(!s) return;
+    switch(s->stm_t){
+        case ASSIGNSTM: {
+            const char *dest_name = lookup_var_name(s->fields.assign.ident, NULL);
+            compileExpr(s->fields.assign.exp, NULL, dest_name);
+            break;
+        }
+        case COMPOUNDSTM:
+            transStm(s->fields.compound.fst);
+            transStm(s->fields.compound.snd);
+            break;
+        case IFSTM: {
+            char Ltrue[32], Lfalse[32], Lend[32];
+            snprintf(Ltrue, sizeof(Ltrue), "L%d", cg_state.label_count++);
+            snprintf(Lfalse, sizeof(Lfalse), "L%d", cg_state.label_count++);
+            snprintf(Lend, sizeof(Lend), "L%d", cg_state.label_count++);
+            compileCond(s->fields.ifstm.cond, NULL, Ltrue, Lfalse);
+            emit_label(Ltrue);
+            transStm(s->fields.ifstm.then_branch);
+            if(s->fields.ifstm.else_branch){
+                emit_jump(Lend);
+                emit_label(Lfalse);
+                transStm(s->fields.ifstm.else_branch);
+                emit_label(Lend);
+            } else {
+                emit_label(Lfalse);
             }
-            else
-            {
-                printf("unknown_label");
-            }
-            curr = curr->next;
-            continue;
+            break;
         }
-        // JUMP:
-        if (curr->opcode == OP_JUMP)
-        {
-            printf("\tJUMP ");
-            printOp(curr->arg3);
-            printf("\n");
-            curr = curr->next;
-            continue;
+        case WHILESTM: {
+            /* Imprimir exatamente: JUMP cond; LABEL loop; ...; LABEL cond; COND ... loop end; LABEL end */
+            const char *Lcond = "cond";
+            const char *Lloop = "loop";
+            const char *Lend  = "end";
+            emit_jump(Lcond);
+            emit_label(Lloop);
+            transStm(s->fields.whilestm.branch);
+            emit_label(Lcond);
+            compileCond(s->fields.whilestm.cond, NULL, Lloop, Lend); /* emite OP_COND */
+            emit_label(Lend);
+            break;
         }
-        // JUMP FALSE:
-        if (curr->opcode == OP_JUMP_FALSE)
-        {
-            printf("\tJUMP_FALSE ");
-            printOp(curr->arg3);
-            printf(" ");
-            printOp(curr->arg1);
-            printf("\n");
-            curr = curr->next;
-            continue;
+        case PUTSTM: {
+            Atom value = transExpr(s->fields.putstm.output);
+            emit_print(value);
+            break;
         }
-
-        if (curr->opcode == OP_MOVE)
-        {
-            printf("\t");
-            printOp(curr->arg3);
-            printf(":= ");
-            printOp(curr->arg1);
-            printf("\n");
-            curr = curr->next;
-            continue;
+        case GETSTM: {
+            const char *var_name = lookup_var_name(s->fields.getstm.ident, NULL);
+            emit_read(var_name);
+            break;
         }
-        else if (strcmp(arith_symbol(curr->opcode), "NULL") != 0)
-        {
-            printf("\t");
-            printOp(curr->arg3);
-            printf(" := ");
-            printOp(curr->arg1);
-            printf(" %s ", arith_symbol(curr->opcode));
-            printOp(curr->arg2);
-            printf("\n");
-            curr = curr->next;
-            continue;
-        }
-        else if (strcmp(rel_symbol(curr->opcode), "NULL") != 0)
-        {
-            printf("\t");
-            printOp(curr->arg3);
-            printf(" := ");
-            printOp(curr->arg1);
-            printf(" %s ", rel_symbol(curr->opcode));
-            printOp(curr->arg2);
-            printf("\n");
-            curr = curr->next;
-            continue;
-        }
-        else if (curr->opcode == OP_PRINT)
-        {
-            printf("\tPUT ");
-            printOp(curr->arg3);
-            printf("\n");
-            curr = curr->next;
-            continue;
-        }
-        else if (curr->opcode == OP_READ)
-        {
-            printf("\tGET ");
-            printOp(curr->arg3);
-            printf("\n");
-            curr = curr->next;
-            continue;
-        }
-
-        else if (curr->opcode == OP_NOT || curr->opcode == OP_NEG)
-        {
-            printf("\t");
-            printOp(curr->arg3);
-            printf(" := ");
-            if (curr->opcode == OP_NEG)
-                printf("-");
-            else if (curr->opcode == OP_NOT)
-                printf("NOT ");
-            printOp(curr->arg1);
-            printf("\n");
-            curr = curr->next;
-            continue;
-        }
-
-        else
-        {
-            printOp(curr->arg3);
-            printf(" := ");
-            if (curr->arg1.kind != 0)
-                printOp(curr->arg1);
-            printf(" , ");
-            if (curr->arg2.kind != 0)
-                printf(", ");
-            printOp(curr->arg2);
-        }
-        printf("\n");
-
-        curr = curr->next;
+        case PROCSTM:
+            transStm(s->fields.proc.statements);
+            break;
+        default: break;
     }
-
-    printf("\n");
-}
-static void freeOpIfNeeded(Op *op)
-{
-    if (!op)
-        return;
-    if (op->kind == OP_VAR && op->contents.name)
-    {
-        free(op->contents.name);
-        op->contents.name = NULL;
-    }
-}
-
-void freeInstructions(Instr *head)
-{
-    Instr *curr = head;
-    while (curr)
-    {
-        Instr *next = curr->next;
-        freeOpIfNeeded(&curr->arg1);
-        freeOpIfNeeded(&curr->arg2);
-        freeOpIfNeeded(&curr->arg3);
-        free(curr);
-        curr = next;
-    }
-    freeVarTemps();
-}
-
-void allocate_var_temps_from_table(Table tbl)
-{
-    if (!tbl)
-        return;
-    int count = 0;
-    Entry *e = tbl;
-    while (e)
-    {
-        count++;
-        e = e->next;
-    }
-    Entry *arr = NULL;
-    if (count > 0)
-    {
-        arr = (Entry *)malloc(sizeof(Entry) * count);
-        e = tbl;
-        int i = 0;
-        while (e)
-        {
-            arr[i++] = *e;
-            e = e->next;
-        }
-        for (int j = count - 1; j >= 0; --j)
-        {
-            Entry *entry = &arr[j];
-            if (entry && entry->value && entry->value->kind == VAR)
-            {
-                const char *orig = entry->value->name ? entry->value->name : entry->key;
-                getVarTemp((char *)orig);
-            }
-        }
-        free(arr);
-    }
-}
-
-void emit_var_prologue(void)
-{
-    Op empty = {0};
-    for (VarTemp *p = var_temp_head; p != NULL; p = p->next)
-    {
-        Op varOp = newVar(p->name);
-        emit(OP_MOVE, p->temp, varOp, empty);
-    }
-}
-
-void printVarTemps(void)
-{
-    printf("\nVariable Temps:\n");
-    if (var_temp_head == NULL)
-    {
-        printf("(none)\n");
-        return;
-    }
-    for (VarTemp *p = var_temp_head; p != NULL; p = p->next)
-    {
-        printf("Variable %s mapped to Temp t%d\n", p->name, p->temp.contents.temp_id);
-    }
-    printf("\n");
 }
