@@ -4,14 +4,23 @@
 #include <stddef.h> // for size_t type
 #include "ast.h" // for Stm type
 
-typedef struct Type Type; // forward declaration of Type struct
+
 typedef enum { // kinds of symbols
     VAR, CONST, TYPE, FIELD, PROC
 } SymbolKind;
 
+typedef enum {
+    T_INT,
+    T_FLOAT,
+    T_BOOLEAN,
+    T_STRING,
+    T_VOID,
+    T_UNKNOWN
+} TypeKind;
+
 typedef struct SymbolInfo {
     SymbolKind kind; // kind of symbol
-    Type *type; // pointer to type information
+    TypeKind type; // pointer to type information
     int size; // size in bytes
     size_t offset; // offset in activation record or object
     char* canonical_name; // canonical name for the symbol

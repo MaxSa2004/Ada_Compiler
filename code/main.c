@@ -21,47 +21,57 @@
 #include "parser.tab.h"
 #include "codeGenerator.h"
 #include "symbolTable.h"
-// #include "mips_backend.h"
+#include "mips_backend.h"
 
 extern FILE *yyin; // to read from files
 
 // extracts base filename from a path (no directories)
-// static const char *basename_only(const char *path)
-// {
-//   if (!path)
-//     return NULL;
-//   const char *slash = strrchr(path, '/');
-// #ifdef _WIN32
-//   const char *bslash = strrchr(path, '\\');
-//   if (!slash || (bslash && bslash > slash))
-//     slash = bslash;
-// #endif
-//   return slash ? slash + 1 : path;
-// }
+static const char *basename_only(const char *path)
+{
+  if (!path)
+    return NULL;
+  const char *slash = strrchr(path, '/');
+#ifdef _WIN32
+  const char *bslash = strrchr(path, '\\');
+  if (!slash || (bslash && bslash > slash))
+    slash = bslash;
+#endif
+  return slash ? slash + 1 : path;
+}
 
-/* removes the final extension (last '.'), returning a newly allocated string.
-   if no dot found, returns a duplicate of the input. */
-// static char *strip_extension(const char *filename)
-// {
-//   if (!filename)
-//     return NULL;
-//   char *copy = strdup(filename);
-//   if (!copy)
-//     return NULL;
-//   char *dot = strrchr(copy, '.');
-//   if (dot)
-//     *dot = '\0';
-//   return copy;
-// }
+// removes the final extension (last '.'), returning a newly allocated string. if no dot found, returns a duplicate of the input. */
+static char *strip_extension(const char *filename)
+{
+  if (!filename)
+    return NULL;
+  char *copy = strdup(filename);
+  if (!copy)
+    return NULL;
+  char *dot = strrchr(copy, '.');
+  if (dot)
+    *dot = '\0';
+  return copy;
+}
 
 // build output path test_outputs/<base>MIPS.s
-/* static char *build_output_path(const char *inputPath)
+static char *build_output_path(const char *inputPath)
 {
   const char *base = basename_only(inputPath);
   char *stem = strip_extension(base ? base : "stdin");
   if (!stem)
     return NULL;
 
+  char * final_name = stem;
+  char * dynamic_name = NULL;
+  if(strncmp(stem, "input", 5)==0){
+    const char *suffix = stem+5;
+    size_t len = strlen("output") + strlen(suffix) + 1;
+    dynamic_name = (char *)malloc(len);
+    if(dynamic_name){
+      snprintf(dynamic_name, len, "output%s", suffix);
+      final_name = dynamic_name;
+    }
+  }
   // ensure directory exists
   if (mkdir("test_outputs", 0777) == -1)
   {
@@ -71,17 +81,19 @@ extern FILE *yyin; // to read from files
     }
   }
 
-  size_t needed = strlen("test_outputs/") + strlen(stem) + strlen("MIPS.s") + 1;
+  size_t needed = strlen("test_outputs/") + strlen(final_name) + strlen("MIPS.s") + 1;
   char *outPath = (char *)malloc(needed);
   if (!outPath)
   {
     free(stem);
+    if(dynamic_name) free(dynamic_name);
     return NULL;
   }
-  snprintf(outPath, needed, "test_outputs/%sMIPS.s", stem);
+  snprintf(outPath, needed, "test_outputs/%sMIPS.s", final_name);
   free(stem);
+  if(dynamic_name) free(dynamic_name);
   return outPath;
-} */
+} 
 
 int main(int argc, char **argv)
 {
@@ -130,18 +142,18 @@ int main(int argc, char **argv)
 
 
 
-    /* char *outPath = build_output_path(input);
-    if (!outPath)
+    char *outPath = build_output_path(input);
+    const char *out = outPath ? outPath : "outputtMIPS.s";
+    if (generateMIPS(get_instr_list(), symTable, out) == 0)
     {
-      fprintf(stderr, "Error: could not build output path. Using default 'outputMIPS.s'\n");
-      generateMIPS(instr_head, "outputMIPS.s");
+      printf("MIPS code generated in %s\n", out);
     }
     else
     {
-      generateMIPS(instr_head, outPath);
-      printf("MIPS code written to: %s\n", outPath);
+      fprintf(stderr, "Error generating MIPS code\n");
+    }
+    if (outPath)
       free(outPath);
-    } */
 
     free_stm(root);
     free_table(symTable);

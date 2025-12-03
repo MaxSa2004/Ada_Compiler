@@ -8,3 +8,4 @@ begin
         put_line("no");
     end if;
 end main;
+-- result: ok

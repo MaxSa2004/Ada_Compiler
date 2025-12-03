@@ -9,4 +9,6 @@ begin
         end if;
         i := i + 1;
     end loop;
+    put_line(i);
 end main;
+-- low low high high 4

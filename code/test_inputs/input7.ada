@@ -7,3 +7,4 @@ begin
         put_line("bad");
     end if;
 end main;
+-- result: ok

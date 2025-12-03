@@ -432,10 +432,10 @@ static void compileExpr(Exp e, Table table, const char* dest_name){
                 snprintf(Lend,  sizeof(Lend),  "L%d", cg_state.label_count++);
                 emit3_relop(t1, RELOP_NEQ, atom_number(0), Ltrue, Lfalse);
                 emit_label(Ltrue);
-                emit2(dest_name, atom_number(1));
+                emit2(dest_name, atom_number(0));
                 emit_jump(Lend);
                 emit_label(Lfalse);
-                emit2(dest_name, atom_number(0));
+                emit2(dest_name, atom_number(1));
                 emit_label(Lend);
             } else {
                 /* NEG: dest := 0 - t1 */
@@ -537,9 +537,20 @@ void transStm(Stm s){
             break;
         }
         case PUTSTM: {
-            Atom value = transExpr(s->fields.putstm.output);
-            emit_print(value);
+            Exp e = s->fields.putstm.output;
+            if(e->exp_t==STREXP){
+                emit_print(atom_string(e->fields.string));
+            }
+            else if(e->exp_t == IDEXP){
+                const char *var_name = lookup_var_name(e->fields.ident, NULL);
+                emit_print(atom_var(var_name));
+            }
+            else {
+                Atom val = transExpr(e);
+                emit_print(val);
+            }
             break;
+            
         }
         case GETSTM: {
             const char *var_name = lookup_var_name(s->fields.getstm.ident, NULL);

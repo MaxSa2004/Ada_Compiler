@@ -8,3 +8,5 @@ begin
         put_line("neg");
     end if;
 end main;
+
+-- x = 5, 5nonneg

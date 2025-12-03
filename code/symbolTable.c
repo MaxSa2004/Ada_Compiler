@@ -105,6 +105,49 @@ Table remove_entry(Table tbl, Entry *ptr){
 
 }
 
+
+static TypeKind infer_type(Exp e, Table t){
+  if(!e) return T_VOID;
+  switch(e->exp_t){
+    case NUMEXP:
+      return T_INT;
+    case FLOATEXP:
+      return T_FLOAT;
+    case BOOLEXP:
+      return T_BOOLEAN;
+    case STREXP:
+      return T_STRING;
+    case OPEXP: {
+      TypeKind left_type = infer_type(e->fields.opexp.left, t);
+      TypeKind right_type = infer_type(e->fields.opexp.right, t);
+      int op = e->fields.opexp.op;
+      if(op == SUM || op == SUB || op == TIMES || op == DIVISION || op == MODULUS || op == REMAINDER || op == POW){
+        if(left_type == T_FLOAT || right_type == T_FLOAT){
+          return T_FLOAT;
+        } 
+        if(left_type == T_INT && right_type == T_INT){
+          return T_INT;
+        } 
+      } 
+      return T_INT; // unknown
+    }
+    case IDEXP:
+      {
+        SymbolInfo *info = lookup_value(t, e->fields.ident);
+        if(info){
+          return info->type;
+        } else {
+          return T_VOID; // unknown
+        }
+      }
+    case PAREXP:
+      return infer_type(e->fields.parexp.inner, t);
+    default:
+      return T_VOID;
+  }
+
+}
+
 /* create new symbol info
 */
 SymbolInfo* symbolInfo_new(void){
@@ -114,7 +157,7 @@ SymbolInfo* symbolInfo_new(void){
         exit(1);
     }
     symInfo->kind = VAR; // default kind
-    symInfo->type = NULL;
+    symInfo->type = T_VOID;
     symInfo->size = 0;
     symInfo->offset = 0;
     symInfo->canonical_name = NULL;
@@ -154,13 +197,14 @@ char* canonicalize_name(char *name){
     return canonical_name;
 }
 
-static Table register_var(Table t, char *name){
+static Table register_var(Table t, char *name, TypeKind type){
   if(name==NULL) return t;
   char *canon = canonicalize_name(name);
   // fprintf(stderr, "Registering variable: %s (canonical: %s)\n", name, canon);
   if(lookup(t, canon) == NULL){
     SymbolInfo *info = symbolInfo_new();
     info->kind = VAR;
+    info->type = type;
     info->name = strdup(name);
     info->canonical_name = strdup(canon);
     info->scope = strdup(current_scope);
@@ -180,9 +224,11 @@ static Table register_var(Table t, char *name){
 Table check_semantics(Stm s, Table t){
   if(!s) return t;
   switch(s->stm_t){
-    case ASSIGNSTM:
-      t  = register_var(t, s->fields.assign.ident);
+    case ASSIGNSTM:{
+    TypeKind kind = infer_type(s->fields.assign.exp, t);
+      t  = register_var(t, s->fields.assign.ident, kind);
       break;
+    }
     case COMPOUNDSTM:
       t = check_semantics(s->fields.compound.fst, t);
       t = check_semantics(s->fields.compound.snd, t);
@@ -196,8 +242,19 @@ Table check_semantics(Stm s, Table t){
     case WHILESTM:
       t = check_semantics(s->fields.whilestm.branch, t);
       break;
-    case GETSTM:
-      t  = register_var(t, s->fields.getstm.ident);
+    case GETSTM: {
+      char* canon = canonicalize_name(s->fields.getstm.ident);
+      Entry *existing = lookup(t, canon);
+      if(existing && existing->value){
+        t = register_var(t, s->fields.getstm.ident, existing->value->type);
+      } else {
+      t  = register_var(t, s->fields.getstm.ident, T_STRING);
+      }
+      free(canon);
+      break;
+    }
+    case PUTSTM:
+      infer_type(s->fields.putstm.output, t);
       break;
     case PROCSTM: {
       char *canon = canonicalize_name(s->fields.proc.name);

@@ -1,3 +1,4 @@
+-- result: true
 procedure main is
 begin
     a := 3;

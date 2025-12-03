@@ -6,10 +6,12 @@ begin
    -- Assignment and arithmetic expressions
    x := -5;
    y := 10;
-   z := x * y + (x - 3) / 2;
+   -- z = -50 + (-4) = -54
+   z := x * y + (x - 3) / 2; 
 
    -- Boolean expressions
    flag := true;
+   -- condition = ((1 and !0) or 0) = 1
    condition := (x < y) and not(flag = false) or (z >= 20);
 
    -- Conditional (if-then-else)
@@ -20,7 +22,7 @@ begin
    end if;
 
    -- While loop example
-   while x < 15 loop
+   while x < 5 loop
       x := x + 1;
       put_line("Incrementing X...");
    end loop;
@@ -28,4 +30,6 @@ begin
    -- Another output
    put_line("Final value of X:");
    put_line(x);
+   put_line("from:");
+   put_line(name);
 end main;
