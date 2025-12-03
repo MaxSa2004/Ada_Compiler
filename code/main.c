@@ -21,38 +21,38 @@
 #include "parser.tab.h"
 #include "codeGenerator.h"
 #include "symbolTable.h"
-#include "mips_backend.h"
+// #include "mips_backend.h"
 
 extern FILE *yyin; // to read from files
 
 // extracts base filename from a path (no directories)
-static const char *basename_only(const char *path)
-{
-  if (!path)
-    return NULL;
-  const char *slash = strrchr(path, '/');
-#ifdef _WIN32
-  const char *bslash = strrchr(path, '\\');
-  if (!slash || (bslash && bslash > slash))
-    slash = bslash;
-#endif
-  return slash ? slash + 1 : path;
-}
+// static const char *basename_only(const char *path)
+// {
+//   if (!path)
+//     return NULL;
+//   const char *slash = strrchr(path, '/');
+// #ifdef _WIN32
+//   const char *bslash = strrchr(path, '\\');
+//   if (!slash || (bslash && bslash > slash))
+//     slash = bslash;
+// #endif
+//   return slash ? slash + 1 : path;
+// }
 
 /* removes the final extension (last '.'), returning a newly allocated string.
    if no dot found, returns a duplicate of the input. */
-static char *strip_extension(const char *filename)
-{
-  if (!filename)
-    return NULL;
-  char *copy = strdup(filename);
-  if (!copy)
-    return NULL;
-  char *dot = strrchr(copy, '.');
-  if (dot)
-    *dot = '\0';
-  return copy;
-}
+// static char *strip_extension(const char *filename)
+// {
+//   if (!filename)
+//     return NULL;
+//   char *copy = strdup(filename);
+//   if (!copy)
+//     return NULL;
+//   char *dot = strrchr(copy, '.');
+//   if (dot)
+//     *dot = '\0';
+//   return copy;
+// }
 
 // build output path test_outputs/<base>MIPS.s
 /* static char *build_output_path(const char *inputPath)
@@ -126,6 +126,7 @@ int main(int argc, char **argv)
     printVarTemps();
     emit_var_prologue(); */
     transStm(root);
+    print_instr_list(get_instr_list());
 
 
 
