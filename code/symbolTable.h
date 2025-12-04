@@ -14,8 +14,7 @@ typedef enum {
     T_FLOAT,
     T_BOOLEAN,
     T_STRING,
-    T_VOID,
-    T_UNKNOWN
+    T_VOID
 } TypeKind;
 
 typedef struct SymbolInfo {

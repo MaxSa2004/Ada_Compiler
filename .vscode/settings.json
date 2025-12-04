@@ -9,6 +9,7 @@
         "variant": "cpp",
         "parser.tab.h": "c",
         "string.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "ast.h": "c"
     }
 }

@@ -59,20 +59,40 @@ There are two different executables in this repository: printAST_Mac and printAS
 Ada_Compiler/
 ├── code/
 │   ├── ast_debug.c
-|   ├── ast_debug.o
 │   ├── ast.c
 |   ├── ast.h
 │   ├── lexer.x
 |   ├── main.c
 |   ├── Makefile
 │   ├── parser.y
+│   ├── codeGenerator.c
+│   ├── codeGenerator.h
+│   ├── mips_backend.c
+│   ├── mips_backend.h
+│   ├── symbolTable.c
+│   ├── symbolTable.h
 │   ├── printAST_Mac
 │   ├── printAST_Linux
 │   └── test_inputs/
 |        |── input1.ada
 |        ├── input2.ada
-|        └── input3.ada
+|        ├── input3.ada
+|        ├── input4.ada
+|        ├── input5.ada
+|        ├── input6.ada
+|        ├── input7.ada
+|        └── input8.ada
+│   └── test_outputs/
+|        |── output1MIPS.s
+|        ├── output2MIPS.s
+|        ├── output3MIPS.s
+|        ├── output4MIPS.s
+|        ├── output5MIPS.s
+|        ├── output6MIPS.s
+|        ├── output7MIPS.s
+|        └── output8MIPS.s
 ├── worksheet/
+|    ├── Compilers_CourseWork2.pdf
 |    └── Compiladores_Trabalho.pdf
 └── READMe.md
 
@@ -111,24 +131,86 @@ From highest to lowest:
 
 ## Output
 Using `test_inputs/input3.ada`:
-- Pretty:
+- Pretty-printing AST:
 ```
-PROCEDURE Main IS BEGIN x := 5 ; IF x > 3 THEN PUT_LINE("ok"); END IF; END Main;
+PROCEDURE main IS BEGIN x := 5 ; y := 3.14 ; IF x > 3 THEN PUT_LINE("ok"); ELSE PUT_LINE("no"); END IF; END main;
 ```
-- Debug:
+- Debug AST:
 ```
-PROCEDURE(Main)
+PROCEDURE(main)
   body:
     ASSIGN(x, NUM(5))
+    ASSIGN(y, FLOAT(3.14))
     IF
       cond: OP(GT, ID(x), NUM(3))
       then:
         PUT_LINE(STRING("ok"))
       else:
-        (none)
+        PUT_LINE(STRING("no"))
+```
+- Symbol table:
+```
+----------------------------------------------------------------------
+| CANONICAL NAME  | NAME   | KIND     | SCOPE      | SIZE   | OFFSET |
+----------------------------------------------------------------------
+| y               | y      | VAR      | main       | 4      | 4      |
+| x               | x      | VAR      | main       | 4      | 0      |
+| main            | main   | PROC     | Global     | 0      | 0      |
+----------------------------------------------------------------------
+```
+- Three Adress Code:
+```
+x := 5
+y := 3.14
+t0 := x
+t1 := 3
+COND t0 > t1 L0 L1
+LABEL L0
+PUT "ok"
+JUMP L2
+LABEL L1
+PUT "no"
+LABEL L2
+```
+- MIPS (at output3MIPS.s):
+```
+.data
+str_1: .asciiz "no"
+str_0: .asciiz "ok"
+flt_0: .float 3.140000
+.text
+.globl main
+main:
+    addi $sp, $sp, -16
+    sw $ra, 12($sp)
+    sw $fp, 8($sp)
+    addi $fp, $sp, 16
+    addi $t0, $zero, 5
+    sw $t0, 0($fp)
+    la $t0, flt_0
+    lwc1 $f12, 0($t0)
+   swc1 $f12, 4($fp)
+    lw $t1, 0($fp)
+    move $t2, $t1
+    addi $t0, $zero, 3
+    move $t3, $t0
+    slt $1, $t3, $t2
+    bne $1, $zero, L0
+    beq $1, $zero, L1
+L0:
+    la $a0, str_0
+    li $v0, 4
+    syscall
+    j L2
+L1:
+    la $a0, str_1
+    li $v0, 4
+    syscall
+L2:
+    li $v0, 10
+    syscall
 
 ```
-
 
 ## Memory Management
 - Nodes and strings allocated with `malloc` / `strdup`
