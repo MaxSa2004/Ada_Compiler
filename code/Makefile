@@ -7,7 +7,7 @@ SRCS = main.c ast.c ast_debug.c symbolTable.c codeGenerator.c mips_backend.c
 PARSER_SRC = parser.y
 LEXER_SRC = lexer.x
 
-EXEC = printAST  
+EXEC = adaCompiler  
 
 all: $(EXEC)
 
