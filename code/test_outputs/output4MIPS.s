@@ -11,6 +11,9 @@ main:
     move $a0, $t1
     li $v0, 1
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
     addi $t0, $zero, 0
     sw $t0, 4($fp)
     li $v0, 5
@@ -24,6 +27,9 @@ main:
     move $t2, $t1
     move $a0, $t2
     li $v0, 1
+    syscall
+    li $a0, 10
+    li $v0, 11
     syscall
     li $v0, 10
     syscall

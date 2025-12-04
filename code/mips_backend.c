@@ -527,6 +527,9 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
             {
                 fprintf(out, "    # Unsupported PRINT argument\n");
             }
+            fprintf(out, "    li $a0, 10\n");
+            fprintf(out, "    li $v0, 11\n");
+            fprintf(out, "    syscall\n");
             break;
         }
         case OP_READ:

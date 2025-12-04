@@ -114,10 +114,16 @@ L12:
     la $a0, str_0
     li $v0, 4
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
     j L14
 L13:
     la $a0, str_1
     li $v0, 4
+    syscall
+    li $a0, 10
+    li $v0, 11
     syscall
 L14:
     j cond
@@ -131,6 +137,9 @@ loop:
     la $a0, str_2
     li $v0, 4
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
 cond:
     lw $t0, 4($fp)
     move $t9, $t0
@@ -143,15 +152,27 @@ end:
     la $a0, str_3
     li $v0, 4
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
     lw $t0, 4($fp)
     move $a0, $t0
     li $v0, 1
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
     la $a0, str_4
     li $v0, 4
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
     lw $a0, 0($fp)
     li $v0, 4
+    syscall
+    li $a0, 10
+    li $v0, 11
     syscall
     li $v0, 10
     syscall

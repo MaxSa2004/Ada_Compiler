@@ -23,10 +23,16 @@ L0:
     la $a0, str_0
     li $v0, 4
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
     j L2
 L1:
     la $a0, str_1
     li $v0, 4
+    syscall
+    li $a0, 10
+    li $v0, 11
     syscall
 L2:
     lw $t1, 0($fp)
@@ -47,6 +53,9 @@ end:
     lw $t1, 0($fp)
     move $a0, $t1
     li $v0, 1
+    syscall
+    li $a0, 10
+    li $v0, 11
     syscall
     li $v0, 10
     syscall

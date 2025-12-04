@@ -80,10 +80,16 @@ L12:
     la $a0, str_0
     li $v0, 4
     syscall
+    li $a0, 10
+    li $v0, 11
+    syscall
     j L14
 L13:
     la $a0, str_1
     li $v0, 4
+    syscall
+    li $a0, 10
+    li $v0, 11
     syscall
 L14:
     li $v0, 10
