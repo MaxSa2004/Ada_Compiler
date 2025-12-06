@@ -9,7 +9,7 @@ typedef enum { // kinds of symbols
     VAR, CONST, TYPE, FIELD, PROC
 } SymbolKind;
 
-typedef enum {
+typedef enum { // kinds of types
     T_INT,
     T_FLOAT,
     T_BOOLEAN,

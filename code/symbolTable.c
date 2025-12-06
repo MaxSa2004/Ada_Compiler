@@ -105,19 +105,20 @@ Table remove_entry(Table tbl, Entry *ptr){
 
 }
 
-
+/* infer type of expression, to see what type a variable should be declared as and therefore how to handle it in code generation
+*/
 static TypeKind infer_type(Exp e, Table t){
   if(!e) return T_VOID;
   switch(e->exp_t){
-    case NUMEXP:
+    case NUMEXP: // integer literal
       return T_INT;
-    case FLOATEXP:
+    case FLOATEXP: // float literal
       return T_FLOAT;
-    case BOOLEXP:
+    case BOOLEXP: // boolean literal 
       return T_BOOLEAN;
-    case STREXP:
+    case STREXP: // string literal
       return T_STRING;
-    case OPEXP: {
+    case OPEXP: { // binary operation
       TypeKind left_type = infer_type(e->fields.opexp.left, t);
       TypeKind right_type = infer_type(e->fields.opexp.right, t);
       int op = e->fields.opexp.op;
@@ -129,15 +130,15 @@ static TypeKind infer_type(Exp e, Table t){
           return T_INT;
         } 
       } 
-      return T_INT; // unknown
+      return T_INT; 
     }
-    case IDEXP:
+    case IDEXP: // identifier = variable
       {
         SymbolInfo *info = lookup_value(t, e->fields.ident);
         if(info){
           return info->type;
         } else {
-          return T_VOID; // unknown
+          return T_VOID; 
         }
       }
     case PAREXP:
@@ -196,7 +197,8 @@ char* canonicalize_name(char *name){
     canonical_name[len] = '\0';
     return canonical_name;
 }
-
+/* register variable in symbol table if not already present
+*/
 static Table register_var(Table t, char *name, TypeKind type){
   if(name==NULL) return t;
   char *canon = canonicalize_name(name);
@@ -224,41 +226,41 @@ static Table register_var(Table t, char *name, TypeKind type){
 Table check_semantics(Stm s, Table t){
   if(!s) return t;
   switch(s->stm_t){
-    case ASSIGNSTM:{
+    case ASSIGNSTM:{ // assignment statement
     TypeKind kind = infer_type(s->fields.assign.exp, t);
       t  = register_var(t, s->fields.assign.ident, kind);
       break;
     }
-    case COMPOUNDSTM:
+    case COMPOUNDSTM: // compound statement
       t = check_semantics(s->fields.compound.fst, t);
       t = check_semantics(s->fields.compound.snd, t);
       break;
-    case IFSTM:
+    case IFSTM: // if statement
       t = check_semantics(s->fields.ifstm.then_branch, t);
       if(s->fields.ifstm.else_branch){
         t = check_semantics(s->fields.ifstm.else_branch, t);
       }
       break;
-    case WHILESTM:
+    case WHILESTM: // while statement
       t = check_semantics(s->fields.whilestm.branch, t);
       break;
-    case GETSTM: {
-      char* canon = canonicalize_name(s->fields.getstm.ident);
-      Entry *existing = lookup(t, canon);
-      if(existing && existing->value){
+    case GETSTM: { // input statement
+      char* canon = canonicalize_name(s->fields.getstm.ident); // get canonical name
+      Entry *existing = lookup(t, canon); // check if variable already exists
+      if(existing && existing->value){ // if exists, use its type
         t = register_var(t, s->fields.getstm.ident, existing->value->type);
       } else {
-      t  = register_var(t, s->fields.getstm.ident, T_STRING);
+      t  = register_var(t, s->fields.getstm.ident, T_STRING); // default to string type
       }
       free(canon);
       break;
     }
-    case PUTSTM:
+    case PUTSTM: // output statement
       infer_type(s->fields.putstm.output, t);
       break;
-    case PROCSTM: {
+    case PROCSTM: { // procedure declaration
       char *canon = canonicalize_name(s->fields.proc.name);
-      if(lookup(t, canon) == NULL){
+      if(lookup(t, canon) == NULL){ // only add if not already present
         SymbolInfo *info = symbolInfo_new();
         info->kind = PROC;
         info->name = strdup(s->fields.proc.name);
@@ -267,11 +269,11 @@ Table check_semantics(Stm s, Table t){
         t = add_entry(t, canon, info);
       }
       free(canon);
-      char* old_scope = current_scope;
-      current_scope = s->fields.proc.name;
+      char* old_scope = current_scope; // save old scope
+      current_scope = s->fields.proc.name; // update current scope
 
       t = check_semantics(s->fields.proc.statements, t);
-      current_scope = old_scope;
+      current_scope = old_scope; // restore old scope
       break;
     }
     default:
@@ -280,7 +282,8 @@ Table check_semantics(Stm s, Table t){
   }
   return t;
 }
-
+/* get string representation of symbol kind
+*/
 static const char* get_kind_string(SymbolKind kind){
   switch(kind){
     case VAR:
@@ -295,7 +298,8 @@ static const char* get_kind_string(SymbolKind kind){
       return "UNKNOWN";
   }
 }
-
+/* print symbol table
+*/
 void printSymbolTable(Table t){
   printf("\nSymbol Table:\n");
   printf("---------------------------------------------------------------------------------\n");

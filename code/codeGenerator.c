@@ -3,8 +3,10 @@
 #include <string.h>
 #include "codeGenerator.h"
 
-CodeGenState cg_state = (CodeGenState){0};
 
+CodeGenState cg_state = (CodeGenState){0}; // global state of the code generator initialized to zero
+/* secure string duplication *
+*/
 static char *strdup_safe(const char *s){
     if (!s) return NULL;
     size_t n = strlen(s) + 1;
@@ -14,7 +16,7 @@ static char *strdup_safe(const char *s){
     return p;
 }
 
-/* Lista de instruções */
+/* create new instruction list */
 InstrList *new_instr_list(void){
     InstrList *list = (InstrList *)malloc(sizeof(InstrList));
     if (!list) return NULL;
@@ -23,44 +25,44 @@ InstrList *new_instr_list(void){
     list->size = 0;
     return list;
 }
-
+/* append instruction to list */
 void append_instr(InstrList *list, Instr *instr){
     if (!list || !instr) return;
     InstrNode *node = (InstrNode *)malloc(sizeof(InstrNode));
     if (!node) return;
     node->instr = instr;
     node->next = NULL;
-    if (!list->head) {
+    if (!list->head) { // empty list (first element is the head and tail)
         list->head = list->tail = node;
-    } else {
+    } else { // non-empty list (append to tail)
         list->tail->next = node;
         list->tail = node;
     }
     list->size++;
 }
-
+/* get head of list */
 Instr *get_first(const InstrList *list){
     if (!list || !list->head) return NULL;
     return list->head->instr;
 }
-
+/* get next instruction of a node */
 InstrNode *next_instrs(const InstrNode *node){
     if (!node) return NULL;
     return node->next;
 }
-
+/* get the whole list */
 InstrList *get_instr_list(void){
     return cg_state.instructions;
 }
 
-/* Inicialização */
+/* initialization of code gen */
 void init_code_generator(void){
     cg_state.instructions = new_instr_list();
     cg_state.temp_count = 0;
     cg_state.label_count = 0;
 }
 
-/* Libertação */
+/* memory management (free) */
 static void free_atom(Atom *a){
     if(!a) return;
     if(a->kind == ATOM_VAR && a->contents.name) {
@@ -106,7 +108,7 @@ void free_code_generator(void){
     cg_state.label_count = 0;
 }
 
-/* Átomos */
+/* Atoms */
 Atom atom_var(const char *name){
     Atom a; a.kind = ATOM_VAR; a.contents.name = strdup_safe(name); return a;
 }
@@ -125,12 +127,13 @@ Atom atom_boolean(int value){
 Atom atom_temp(int temp_id){
     Atom a; a.kind = ATOM_TEMP; a.contents.temp_id = temp_id; return a;
 }
+/* create new temp */
 Atom new_temp(void){
     int id = cg_state.temp_count++;
     return atom_temp(id);
 }
 
-/* Emissores */
+/* create new instruction*/
 static Instr *new_instr(instrop op){
     Instr *i = (Instr*)malloc(sizeof(Instr));
     if(!i) return NULL;
@@ -138,7 +141,8 @@ static Instr *new_instr(instrop op){
     i->iop = op;
     return i;
 }
-
+/* emitters */
+/* emitter for 2 args */
 Instr *emit2(const char *dest, Atom src){
     Instr *i = new_instr(OP_ASSIGN);
     if(!i) return NULL;
@@ -148,7 +152,7 @@ Instr *emit2(const char *dest, Atom src){
     append_instr(cg_state.instructions, i);
     return i;
 }
-
+/*emitter for 3 args in binary operation*/
 Instr *emit3_binop(const char *dest, Atom arg1, binop op, Atom arg2){
     Instr *i = new_instr(OP_ASSIGN);
     if(!i) return NULL;
@@ -161,7 +165,7 @@ Instr *emit3_binop(const char *dest, Atom arg1, binop op, Atom arg2){
     return i;
 }
 
-/* Pseudo-instrução COND para impressão compacta */
+/* emitter for 3 args in relational operation */
 Instr *emit3_relop(Atom arg1, relop op, Atom arg2, const char *true_label, const char *false_label){
     Instr *i = new_instr(OP_COND);
     if(!i) return NULL;
@@ -173,7 +177,7 @@ Instr *emit3_relop(Atom arg1, relop op, Atom arg2, const char *true_label, const
     append_instr(cg_state.instructions, i);
     return i;
 }
-
+/*emitter for label*/
 Instr *emit_label(const char *label){
     Instr *i = new_instr(OP_LABEL);
     if(!i) return NULL;
@@ -181,7 +185,7 @@ Instr *emit_label(const char *label){
     append_instr(cg_state.instructions, i);
     return i;
 }
-
+/*emitter for jump*/
 Instr *emit_jump(const char *label){
     Instr *i = new_instr(OP_JUMP);
     if(!i) return NULL;
@@ -189,7 +193,7 @@ Instr *emit_jump(const char *label){
     append_instr(cg_state.instructions, i);
     return i;
 }
-
+/*emitter for jump false*/
 Instr *emit_jump_false(Atom cond, const char *label){
     Instr *i = new_instr(OP_JUMP_FALSE);
     if(!i) return NULL;
@@ -198,7 +202,7 @@ Instr *emit_jump_false(Atom cond, const char *label){
     append_instr(cg_state.instructions, i);
     return i;
 }
-
+/*emitter for print (put)*/
 Instr *emit_print(Atom value){
     Instr *i = new_instr(OP_PRINT);
     if(!i) return NULL;
@@ -206,7 +210,7 @@ Instr *emit_print(Atom value){
     append_instr(cg_state.instructions, i);
     return i;
 }
-
+/*emitter for read(get)*/
 Instr *emit_read(const char *var_name){
     Instr *i = new_instr(OP_READ);
     if(!i) return NULL;
@@ -215,7 +219,7 @@ Instr *emit_read(const char *var_name){
     return i;
 }
 
-/* Impressão */
+/* printing operators */
 static const char *binop_to_str(binop op){
     switch(op){
         case BINOP_ADD: return "+";
@@ -242,6 +246,7 @@ static const char *relop_to_str(relop op){
         default: return "?";
     }
 }
+/*printing atoms (their values)*/
 static void print_atom(const Atom *a){
     if(!a){printf("(null)"); return;}
     switch(a->kind){
@@ -254,6 +259,7 @@ static void print_atom(const Atom *a){
         default:          printf("(unknown atom)"); break;
     }
 }
+/*printing instructions*/
 void print_instr(const Instr *instr){
     if(!instr) {printf("(null-instr)\n"); return;}
     switch(instr->iop){
@@ -298,6 +304,7 @@ void print_instr(const Instr *instr){
             printf("(unknown-instr)\n");
     }
 }
+/*printing instruction list*/
 void print_instr_list(const InstrList *list){
     if(!list) {printf("(null-instr-list)\n"); return;}
     for (InstrNode *n = list->head; n; n = n->next) {
@@ -305,11 +312,13 @@ void print_instr_list(const InstrList *list){
     }
 }
 
-/* Helpers de mapeamento do AST (ajusta para nomes reais do teu ast.h) */
+/* helpers for AST mapping */
+/* looking for a variable name in a table, to check its existance */
 static const char* lookup_var_name(const char *id, Table table){
     (void)table;
     return id ? id : "(null-id)";
 }
+/*mapping binary operators*/
 static int map_ast_binop_to_binop(int ast_op, binop *out){
     switch(ast_op){
         case SUM:        *out = BINOP_ADD; return 1;
@@ -325,6 +334,7 @@ static int map_ast_binop_to_binop(int ast_op, binop *out){
         default: return 0;
     }
 }
+/*mapping relational operators*/
 static int map_ast_relop_to_relop(int ast_op, relop *out){
     switch(ast_op){
         case EQUAL:      *out = RELOP_EQ;  return 1;
@@ -337,17 +347,17 @@ static int map_ast_relop_to_relop(int ast_op, relop *out){
     }
 }
 
-/* Compiladores de expressão/condição */
+/* compiler for expressions (def) */
 static void compileExpr(Exp e, Table table, const char* dest_name);
-
+/*compiler for conditions*/
 static void compileCond(Exp e, Table table, const char *labelT, const char *labelF){
     if(!e) {emit_jump(labelF); return;}
     switch(e->exp_t){
-        case BOOLEXP:
+        case BOOLEXP: // in a boolean expression, jump directly (if the value is 0 then jump to false label, else to true)
             if(e->fields.boolVal) emit_jump(labelT);
             else emit_jump(labelF);
-            break;
-        case UNOEXP:
+            break; 
+        case UNOEXP:  // in a unary expression, handle NOT operator by compiling what's inside, else it's a NEG operator: create a temp and a buffer, compile the inner expression into the temp, and emit a COND instruction checking if the temp is not equal to 0
             if(e->fields.unoexp.op == NOTexp){
                 compileCond(e->fields.unoexp.child, table, labelF, labelT);
             } else {
@@ -357,9 +367,10 @@ static void compileCond(Exp e, Table table, const char *labelT, const char *labe
                 emit3_relop(t, RELOP_NEQ, atom_number(0), labelT, labelF);
             }
             break;
-        case OPEXP: {
+        case OPEXP: { 
             int op = e->fields.opexp.op;
             relop rop;
+            // in a binary operation expression, check if it's a relational operator, if so create two temps and buffers, compile left and right expressions into the temps, and emit a COND instruction with the relational operator; 
             if (map_ast_relop_to_relop(op, &rop)) {
                 Atom t1 = new_temp(), t2 = new_temp();
                 char t1n[32], t2n[32];
@@ -367,8 +378,8 @@ static void compileCond(Exp e, Table table, const char *labelT, const char *labe
                 snprintf(t2n, sizeof(t2n), "t%d", t2.contents.temp_id);
                 compileExpr(e->fields.opexp.left, table, t1n);
                 compileExpr(e->fields.opexp.right, table, t2n);
-                /* Apenas COND para o formato do prof; não emitir JUMPs aqui */
                 emit3_relop(t1, rop, t2, labelT, labelF);
+                // if it's a logical AND, OR, or XOR, handle short-circuit evaluation by creating mid labels and compiling left and right expressions accordingly; 
             } else if (op == ANDexp) {
                 char Lmid[32]; snprintf(Lmid, sizeof(Lmid), "L%d", cg_state.label_count++);
                 compileCond(e->fields.opexp.left, table, Lmid, labelF);
@@ -380,14 +391,11 @@ static void compileCond(Exp e, Table table, const char *labelT, const char *labe
                 emit_label(Lmid);
                 compileCond(e->fields.opexp.right, table, labelT, labelF);
             } else if (op == XORexp) {
-                /* simplificação: (a && !b) || (!a && b) */
                 char Lmid[32]; snprintf(Lmid, sizeof(Lmid), "L%d", cg_state.label_count++);
                 compileCond(e->fields.opexp.left, table, Lmid, labelF);
                 emit_label(Lmid);
-                compileCond(e->fields.opexp.right, table, labelF, labelT); /* !b */
-                /* Para impressão estilo prof, não emitimos jumps aqui */
-            } else {
-                /* expressão aritmética como condição: exp != 0 */
+                compileCond(e->fields.opexp.right, table, labelF, labelT); 
+            } else { // if it's an arithmetic expression, create a temp and buffer, compile the left expression into the temp, and emit a COND instruction checking if the temp is not equal to 0
                 Atom t = new_temp();
                 char tn[32]; snprintf(tn, sizeof(tn), "t%d", t.contents.temp_id);
                 compileExpr(e->fields.opexp.left, table, tn);
@@ -395,10 +403,10 @@ static void compileCond(Exp e, Table table, const char *labelT, const char *labe
             }
             break;
         }
-        case PAREXP:
+        case PAREXP: // in a parenthesized expression, compile what's inside
             compileCond(e->fields.parexp.inner, table, labelT, labelF);
             break;
-        default: {
+        default: { // in other expressions, create a temp and buffer, compile the expression into the temp, and emit a COND instruction checking if the temp is not equal to 0
             Atom t = new_temp();
             char tn[32]; snprintf(tn, sizeof(tn), "t%d", t.contents.temp_id);
             compileExpr(e, table, tn);
@@ -407,20 +415,20 @@ static void compileCond(Exp e, Table table, const char *labelT, const char *labe
         }
     }
 }
-
+// compiler for expressions
 static void compileExpr(Exp e, Table table, const char* dest_name){
     if(!e || !dest_name) return;
     switch(e->exp_t){
-        case NUMEXP: emit2(dest_name, atom_number(e->fields.num)); break;
-        case FLOATEXP: emit2(dest_name, atom_float(e->fields.fnum)); break;
-        case STREXP: emit2(dest_name, atom_string(e->fields.string)); break;
-        case BOOLEXP: emit2(dest_name, atom_boolean(e->fields.boolVal ? 1 : 0)); break;
-        case IDEXP: {
+        case NUMEXP: emit2(dest_name, atom_number(e->fields.num)); break; // in a numeric expression, emit an assignment instruction with the number
+        case FLOATEXP: emit2(dest_name, atom_float(e->fields.fnum)); break; // in a float expression, emit an assignment instruction with the float
+        case STREXP: emit2(dest_name, atom_string(e->fields.string)); break; // in a string expression, emit an assignment instruction with the string
+        case BOOLEXP: emit2(dest_name, atom_boolean(e->fields.boolVal ? 1 : 0)); break; // in a boolean expression, emit an assignment instruction with 1 or 0
+        case IDEXP: { // in an identifier expression, look up the variable name in the table and emit an assignment instruction with the variable
             const char *var_name = lookup_var_name(e->fields.ident, table);
             emit2(dest_name, atom_var(var_name));
             break;
         }
-        case UNOEXP: {
+        case UNOEXP: { // in a unary expression, create a temp and buffer, compile the inner expression into the temp, and depending on the operator (NOT or NEG), emit the appropriate instructions
             Atom t1 = new_temp();
             char t1n[32]; snprintf(t1n, sizeof(t1n), "t%d", t1.contents.temp_id);
             compileExpr(e->fields.unoexp.child, table, t1n);
@@ -443,7 +451,7 @@ static void compileExpr(Exp e, Table table, const char* dest_name){
             }
             break;
         }
-        case OPEXP: {
+        case OPEXP: { // in a binary operation expression, check if it's an arithmetic operator, if so create two temps and buffers, compile left and right expressions into the temps, and emit a binary operation instruction;
             binop bop;
             if(map_ast_binop_to_binop(e->fields.opexp.op, &bop)){
                 Atom t1 = new_temp(), t2 = new_temp();
@@ -453,8 +461,8 @@ static void compileExpr(Exp e, Table table, const char* dest_name){
                 compileExpr(e->fields.opexp.left, table, t1n);
                 compileExpr(e->fields.opexp.right, table, t2n);
                 emit3_binop(dest_name, t1, bop, t2);
-            } else {
-                /* Relacionais/lógicos: dest := 1/0 via cond */
+            } else { // if it's a logical operator, create a temp and buffer, compile the expression into the temp, and emit instructions to set dest to 1 or 0 based on the value of the temp
+                /* dest := 1/0 via cond */
                 char Ltrue[32], Lfalse[32], Lend[32];
                 snprintf(Ltrue, sizeof(Ltrue), "L%d", cg_state.label_count++);
                 snprintf(Lfalse, sizeof(Lfalse), "L%d", cg_state.label_count++);
@@ -469,16 +477,16 @@ static void compileExpr(Exp e, Table table, const char* dest_name){
             }
             break;
         }
-        case PAREXP:
+        case PAREXP: // in a parenthesized expression, compile what's inside
             compileExpr(e->fields.parexp.inner, table, dest_name);
             break;
-        default:
+        default: // in other expressions, emit an assignment instruction with 0
             emit2(dest_name, atom_number(0));
             break;
     }
 }
 
-/* API mantida */
+// translators for expressions using the compiler functions
 Atom transExpr(Exp e){
     Atom dest = new_temp();
     char buf[32];
@@ -486,26 +494,27 @@ Atom transExpr(Exp e){
     compileExpr(e, NULL, buf);
     return dest;
 }
+// translator for conditions using the compiler functions
 void transCond(Exp e, Atom labelF, Atom labelT){
     const char *lf = (labelF.kind == ATOM_VAR && labelF.contents.name) ? labelF.contents.name : "LFalse";
     const char *lt = (labelT.kind == ATOM_VAR && labelT.contents.name) ? labelT.contents.name : "LTrue";
     compileCond(e, NULL, lt, lf);
 }
 
-/* Statements, com while a imprimir loop/cond/end */
+/* translator for statements using the compiler functions */
 void transStm(Stm s){
     if(!s) return;
     switch(s->stm_t){
-        case ASSIGNSTM: {
+        case ASSIGNSTM: { // in an assignment statement, look up the variable name in the table and compile the expression into that variable
             const char *dest_name = lookup_var_name(s->fields.assign.ident, NULL);
             compileExpr(s->fields.assign.exp, NULL, dest_name);
             break;
         }
-        case COMPOUNDSTM:
+        case COMPOUNDSTM: // in a compound statement, translate the first and second statements
             transStm(s->fields.compound.fst);
             transStm(s->fields.compound.snd);
             break;
-        case IFSTM: {
+        case IFSTM: { // in an if statement, create labels for true, false, and end, compile the condition into the true and false labels, translate the then branch, and if there's an else branch, emit a jump to the end label, translate the else branch, and emit the end label; otherwise, just emit the false label
             char Ltrue[32], Lfalse[32], Lend[32];
             snprintf(Ltrue, sizeof(Ltrue), "L%d", cg_state.label_count++);
             snprintf(Lfalse, sizeof(Lfalse), "L%d", cg_state.label_count++);
@@ -523,8 +532,8 @@ void transStm(Stm s){
             }
             break;
         }
-        case WHILESTM: {
-            /* Imprimir exatamente: JUMP cond; LABEL loop; ...; LABEL cond; COND ... loop end; LABEL end */
+        case WHILESTM: { // in a while statement, create labels for condition, loop, and end, emit a jump to the condition label, emit the loop label, translate the branch statements, emit the condition label, compile the condition into the loop and end labels, and emit the end label;
+            /* Printing: JUMP cond; LABEL loop; ...; LABEL cond; COND ... loop end; LABEL end */
             const char *Lcond = "cond";
             const char *Lloop = "loop";
             const char *Lend  = "end";
@@ -532,11 +541,11 @@ void transStm(Stm s){
             emit_label(Lloop);
             transStm(s->fields.whilestm.branch);
             emit_label(Lcond);
-            compileCond(s->fields.whilestm.cond, NULL, Lloop, Lend); /* emite OP_COND */
+            compileCond(s->fields.whilestm.cond, NULL, Lloop, Lend); /*  OP_COND */
             emit_label(Lend);
             break;
         }
-        case PUTSTM: {
+        case PUTSTM: { // in a put (print) statement, check the type of the output expression and emit a print instruction accordingly
             Exp e = s->fields.putstm.output;
             if(e->exp_t==STREXP){
                 emit_print(atom_string(e->fields.string));
@@ -552,12 +561,12 @@ void transStm(Stm s){
             break;
             
         }
-        case GETSTM: {
+        case GETSTM: { // in a get (read) statement, look up the variable name in the table and emit a read instruction for that variable
             const char *var_name = lookup_var_name(s->fields.getstm.ident, NULL);
             emit_read(var_name);
             break;
         }
-        case PROCSTM:
+        case PROCSTM: // in a procedure statement, translate the procedure's statements
             transStm(s->fields.proc.statements);
             break;
         default: break;

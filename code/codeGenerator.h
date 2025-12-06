@@ -93,17 +93,19 @@ typedef struct Instr {
     char *label_false; // destino quando falso
 } Instr;
 
+// Instruction Node for linked list
 typedef struct InstrNode {
     struct Instr *instr;
     struct InstrNode *next;
 } InstrNode;
 
+// Instruction List (linked list)
 typedef struct InstrList {
     InstrNode *head;
     InstrNode *tail;
     size_t size;
 } InstrList;
-
+// Code Generation State (for managing temps, labels, instruction list)
 typedef struct CodeGenState {
     InstrList *instructions;
     int temp_count;
@@ -150,7 +152,7 @@ Instr *get_first(const InstrList *list);
 InstrNode *next_instrs(const InstrNode *node);
 InstrList *get_instr_list(void);
 
-// translation functions from ast to TAC
+// translation functions from ast to TAC (important!)
 Atom transExpr(Exp e);
 void transStm(Stm s);
 void transCond(Exp e, Atom labelF, Atom labelT);
