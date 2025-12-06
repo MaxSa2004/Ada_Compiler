@@ -6,13 +6,14 @@
 #include "mips_backend.h"
 
 /*
-Mapeamento de temporários e variáveis para registos
+Mapping of temporaries and variables to registers:
 t0..t9 -> $t0..$t9
-t10+ -> $s0..$s7 (limitado)
-variáveis -> na stack (lw/sw)
+t10+ -> $s0..$s7 (limited)
+variables -> in the stack (lw/sw)
 */
 
 // helpers
+// returns var offset of respective var stores in symbol table
 static int getVarOffset(Table table, const char *name)
 {
     SymbolInfo *s = lookup_value(table, (char *)name);
@@ -27,37 +28,31 @@ static int getVarOffset(Table table, const char *name)
     }
 }
 
-// static int getVarSize(Table table, const char* name){
-//     SymbolInfo* s = lookup_value(table, (char *)name);
-//     if(s == NULL){
-//         fprintf(stderr, "Variable %s not found in symbol table\n", name);
-//         exit(1);
-//     } else {
-//         return s->size;
-//     }
-// }
-
-// temporários em registos
+// maps a temp ID to a MIPS register and returns string of register name
 static char *reg_for_temp(int temp_id)
 {
     int num_regs = 16;
     int index = temp_id % num_regs;
     static char buf[10];
-    if(index<8){
-        snprintf(buf, sizeof(buf), "$t%d", index+2);
-    } else {
+    if (index < 8)
+    {
+        snprintf(buf, sizeof(buf), "$t%d", index + 2);
+    }
+    else
+    {
         int s_idx = index - 8;
         snprintf(buf, sizeof(buf), "$s%d", s_idx);
     }
     return strdup(buf);
 }
 
-// variáveis: usar memória via $fp + offset
+// checks if string corresponds to its temp and stores numeric ID in outTempId
 static int is_temp_name(const char *name, int *outTempId)
 {
     if (!name || name[0] != 't')
         return 0;
-    if(name[1]=='\0') return 0;
+    if (name[1] == '\0')
+        return 0;
     char *endptr = NULL;
     long v = strtol(name + 1, &endptr, 10);
     if (endptr && *endptr == '\0' && v >= 0)
@@ -68,7 +63,8 @@ static int is_temp_name(const char *name, int *outTempId)
     }
     return 0;
 }
-// helpers para literais de strings e floats
+
+// helpers for literals and floats
 typedef struct StrLit
 {
     char *text;
@@ -91,6 +87,7 @@ static int g_float_count = 0;
 static const int DEFAULT_STR_BUF_SIZE = 256;
 static int g_emit_default_str_buf = 0;
 
+// adds string literal to global pool if not already stored, returns unique label
 static const char *pool_string_literal(const char *s)
 {
     if (!s)
@@ -110,6 +107,7 @@ static const char *pool_string_literal(const char *s)
     return new_lit->label;
 }
 
+// adds float literal to global pool if not already stored, returns unique label
 static const char *pool_float_literal(double v)
 {
     for (FloatLit *lit = g_float_pool; lit; lit = lit->next)
@@ -127,6 +125,7 @@ static const char *pool_float_literal(double v)
     return new_lit->label;
 }
 
+// print MIPS .data section to output file
 static void emit_data_section(FILE *out)
 {
     if (!out)
@@ -148,7 +147,7 @@ static void emit_data_section(FILE *out)
     }
 }
 
-// emitir li/addi ou lui/ori para constantes
+// prints li/addi or lui/ori for constants to output file
 static void emit_const(FILE *out, const char *rd, int k)
 {
     unsigned int uk = (unsigned int)k;
@@ -164,14 +163,18 @@ static void emit_const(FILE *out, const char *rd, int k)
         fprintf(out, "    ori %s, $1, 0x%X\n", rd, lower);
     }
 }
+
+// pool of temp registers used by next_int_reg()
 static const char *regs[] = {"$t0", "$t1"};
 static int regs_idx = 0;
 
+// reset pointer used for choosing temp registers
 static inline void reset_int_reg_cursor(void)
 {
     regs_idx = 0;
 }
 
+// returns next register in round-robin style.. used by load_atom_to_reg() to select next register to use
 static const char *next_int_reg(void)
 {
     const int N = (int)sizeof(regs) / sizeof(regs[0]);
@@ -180,8 +183,7 @@ static const char *next_int_reg(void)
     return r;
 }
 
-// carregar atom (temp/var/const) para registo
-
+// load atom (temp/var/const) into a register
 static char *load_atom_to_reg(FILE *out, const Atom *a, Table table)
 {
     if (!a)
@@ -222,9 +224,9 @@ static char *load_atom_to_reg(FILE *out, const Atom *a, Table table)
         return strdup("$f12");
     }
     return strdup("$t9"); // fallback
-    // floats e strings não são tratados nesta função
 }
-// armazenar registo em destino (temp/var)
+
+// store register into destinationn (temp -> move to temp reg / var -> store into stack mem $fp + offset)
 static void store_reg_to_dest(FILE *out, const char *rs, const char *dest, Table table)
 {
     int tempId;
@@ -248,11 +250,12 @@ static void store_reg_to_dest(FILE *out, const char *rs, const char *dest, Table
     }
 }
 
+// generate MIPS code for binop (math/logical operations)
 static void emit_binop(FILE *out, const char *dest, const Atom *a1, binop bop, const Atom *a2, Table table)
 {
     char *r1 = load_atom_to_reg(out, a1, table);
     char *r2 = load_atom_to_reg(out, a2, table);
-    char *rd = strdup("$t1"); // usar $t1 como registo temporário para resultado
+    char *rd = strdup("$t1"); // use $t1 as temp register for result
     char *base = NULL;
     char *exp = NULL;
     char *acc = NULL;
@@ -286,7 +289,7 @@ static void emit_binop(FILE *out, const char *dest, const Atom *a1, binop bop, c
         fprintf(out, "    xor %s, %s, %s\n", rd, r1, r2);
         break;
     case BINOP_POW:
-        // não é suportado diretamente em MIPS-> podemos fazer usando outras funções
+        // not directly supported in MIPS - use loop function to calculate powers
         base = strdup("$t4");
         exp = strdup("$t2");
         acc = strdup("$t3");
@@ -317,14 +320,7 @@ static void emit_binop(FILE *out, const char *dest, const Atom *a1, binop bop, c
     free(rd);
 }
 
-// static InstrNode* next_node(InstrNode *n){
-//     return n ? n->next : NULL;
-// }
-
-// static int is_label_with_name(const Instr *i, const char *name){
-//     return i && i->iop == OP_LABEL && i->dest && name && strcmp(i->dest, name)==0;
-// }
-
+// generates MIPS comparison instructions that brank to labelT or labelF
 static void emit_relop_pair(FILE *out, const Atom *l, relop rop, const Atom *r, const char *labelT, const char *labelF, Table table)
 {
     char *rl = load_atom_to_reg(out, l, table);
@@ -367,8 +363,17 @@ static void emit_relop_pair(FILE *out, const Atom *l, relop rop, const Atom *r, 
     free(rr);
 }
 
+/*
+main code gen function
+preprocess instructions to collect literal data (float/string) and detect string reads
+emit .data section
+emit .text section and prologue
+generate all MIPS instructions for program
+generate epilogue
+ */
 void printMIPS(const InstrList *list, Table table, FILE *out)
 {
+    // preprocess instructions to collect literal data (float/string) and detect string reads
     if (!list || !out)
         return;
     for (InstrNode *n = list->head; n; n = n->next)
@@ -419,18 +424,22 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
             if (i->rel_right.kind == ATOM_FLOAT)
                 (void)pool_float_literal(i->rel_right.contents.fval);
         }
-        else if(i->iop == OP_READ){
+        else if (i->iop == OP_READ)
+        {
             const char *name = i->dest ? i->dest : "";
             SymbolInfo *sinfo = lookup_value(table, (char *)name);
-        if (sinfo && (sinfo->type == T_STRING))
+            if (sinfo && (sinfo->type == T_STRING))
             {
                 // string read
                 g_emit_default_str_buf = 1;
             }
         }
     }
+
+    // emit data section
     emit_data_section(out);
 
+    // emit .text section and prologue
     fprintf(out, ".text\n");
     fprintf(out, ".globl main\n");
     fprintf(out, "main:\n");
@@ -439,6 +448,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
     fprintf(out, "    sw $fp, 8($sp)\n");
     fprintf(out, "    addi $fp, $sp, 16\n");
 
+    // generate all MIPS instructions for program
     for (InstrNode *n = list->head; n; n = n->next)
     {
         Instr *instr = n->instr;
@@ -586,10 +596,13 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
             break;
         }
     }
+
+    // generate epilogue
     fprintf(out, "    li $v0, 10\n");
     fprintf(out, "    syscall\n");
 }
 
+// creates a MIPS file in which it places the mips code generated by printMIPS(list, table, f)
 int generateMIPS(const InstrList *list, Table table, const char *out)
 {
     FILE *f = fopen(out, "w");
