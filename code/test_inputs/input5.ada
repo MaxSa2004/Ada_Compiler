@@ -9,4 +9,4 @@ begin
     end if;
 end main;
 
--- x = 5, 5nonneg
+-- x = 5, nonneg
