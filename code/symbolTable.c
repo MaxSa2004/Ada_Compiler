@@ -106,6 +106,7 @@ Table remove_entry(Table tbl, Entry *ptr){
 }
 
 /* infer type of expression, to see what type a variable should be declared as and therefore how to handle it in code generation
+because depending on the type, the methods vary , specially when storing them
 */
 static TypeKind infer_type(Exp e, Table t){
   if(!e) return T_VOID;
@@ -177,7 +178,7 @@ void symbolInfo_free(SymbolInfo *symInfo){
     free(symInfo);
 }
 
-/* generate canonical name for a symbol (case insensitive)
+/* generate canonical name for a symbol (case insensitive) -> all lower case for better reading
 */
 char* canonicalize_name(char *name){
     if(name == NULL) return NULL;

@@ -28,7 +28,7 @@ static int getVarOffset(Table table, const char *name)
     }
 }
 
-// maps a temp ID to a MIPS register and returns string of register name
+// maps a temp ID to a MIPS register and returns string of register name, to now if it's gonna be register $t or $s
 static char *reg_for_temp(int temp_id)
 {
     int num_regs = 16;
@@ -49,65 +49,65 @@ static char *reg_for_temp(int temp_id)
 // checks if string corresponds to its temp and stores numeric ID in outTempId
 static int is_temp_name(const char *name, int *outTempId)
 {
-    if (!name || name[0] != 't')
+    if (!name || name[0] != 't') // must start with 't'
         return 0;
-    if (name[1] == '\0')
+    if (name[1] == '\0') // no digits after 't'
         return 0;
-    char *endptr = NULL;
-    long v = strtol(name + 1, &endptr, 10);
-    if (endptr && *endptr == '\0' && v >= 0)
+    char *endptr = NULL; 
+    long v = strtol(name + 1, &endptr, 10); // convert substring after 't' to long
+    if (endptr && *endptr == '\0' && v >= 0) // check if entire string was converted and non-negative
     {
-        if (outTempId)
-            *outTempId = (int)v;
+        if (outTempId) // store result if pointer provided
+            *outTempId = (int)v; // store temp ID
         return 1;
     }
     return 0;
 }
 
 // helpers for literals and floats
-typedef struct StrLit
+typedef struct StrLit // for string literals
 {
     char *text;
     char label[32];
     struct StrLit *next;
 } StrLit;
 
-typedef struct FloatLit
+typedef struct FloatLit // for float literals
 {
     double value;
     char label[32];
     struct FloatLit *next;
 } FloatLit;
 
-static StrLit *g_str_pool = NULL;
-static FloatLit *g_float_pool = NULL;
-static int g_str_count = 0;
-static int g_float_count = 0;
+static StrLit *g_str_pool = NULL; // global pool of string literals (pool: linked list)
+static FloatLit *g_float_pool = NULL; // global pool of float literals
+static int g_str_count = 0; // counters for unique labels
+static int g_float_count = 0; // counters for unique labels
 
 static const int DEFAULT_STR_BUF_SIZE = 256;
-static int g_emit_default_str_buf = 0;
+static int g_emit_default_str_buf = 0; // flag to indicate if default string buffer is needed
 
 // adds string literal to global pool if not already stored, returns unique label
 static const char *pool_string_literal(const char *s)
 {
-    if (!s)
+    if (!s) // null string treated as empty
         s = "";
-    for (StrLit *lit = g_str_pool; lit; lit = lit->next)
+    for (StrLit *lit = g_str_pool; lit; lit = lit->next) // search existing literals
     {
-        if (strcmp(lit->text, s) == 0)
+        if (strcmp(lit->text, s) == 0) // found existing literal that matches
         {
             return lit->label;
         }
-    }
+    } // else, create new literal
     StrLit *new_lit = (StrLit *)malloc(sizeof(StrLit));
-    new_lit->text = strdup(s);
-    snprintf(new_lit->label, sizeof(new_lit->label), "str_%d", g_str_count++);
-    new_lit->next = g_str_pool;
-    g_str_pool = new_lit;
+    new_lit->text = strdup(s); // copy string
+    snprintf(new_lit->label, sizeof(new_lit->label), "str_%d", g_str_count++); // unique label
+    new_lit->next = g_str_pool; // insert at head of pool
+    g_str_pool = new_lit; // update head pointer
     return new_lit->label;
 }
 
-// adds float literal to global pool if not already stored, returns unique label
+// adds float literal to global pool if not already stored, returns unique label (same as pool_string_literal)
 static const char *pool_float_literal(double v)
 {
     for (FloatLit *lit = g_float_pool; lit; lit = lit->next)
@@ -130,18 +130,18 @@ static void emit_data_section(FILE *out)
 {
     if (!out)
         return;
-    if (!g_str_pool && !g_float_pool && !g_emit_default_str_buf)
+    if (!g_str_pool && !g_float_pool && !g_emit_default_str_buf) // nothing to emit
         return;
     fprintf(out, ".data\n");
-    if (g_emit_default_str_buf)
+    if (g_emit_default_str_buf) // emit default string buffer if needed
     {
         fprintf(out, "str_buf: .space %d\n", DEFAULT_STR_BUF_SIZE);
     }
-    for (StrLit *lit = g_str_pool; lit; lit = lit->next)
+    for (StrLit *lit = g_str_pool; lit; lit = lit->next) // emit string literals
     {
         fprintf(out, "%s: .asciiz \"%s\"\n", lit->label, lit->text);
     }
-    for (FloatLit *lit = g_float_pool; lit; lit = lit->next)
+    for (FloatLit *lit = g_float_pool; lit; lit = lit->next) // emit float literals
     {
         fprintf(out, "%s: .float %f\n", lit->label, lit->value);
     }
@@ -165,7 +165,7 @@ static void emit_const(FILE *out, const char *rd, int k)
 }
 
 // pool of temp registers used by next_int_reg()
-static const char *regs[] = {"$t0", "$t1"};
+static const char *regs[] = {"$t0", "$t1"}; // limited to 2 temp registers for simplicity
 static int regs_idx = 0;
 
 // reset pointer used for choosing temp registers
@@ -289,7 +289,7 @@ static void emit_binop(FILE *out, const char *dest, const Atom *a1, binop bop, c
         fprintf(out, "    xor %s, %s, %s\n", rd, r1, r2);
         break;
     case BINOP_POW:
-        // not directly supported in MIPS - use loop function to calculate powers
+        // not directly supported in MIPS - used other instructions to implement exponentiation by squaring
         base = strdup("$t4");
         exp = strdup("$t2");
         acc = strdup("$t3");
@@ -373,14 +373,14 @@ generate epilogue
  */
 void printMIPS(const InstrList *list, Table table, FILE *out)
 {
-    // preprocess instructions to collect literal data (float/string) and detect string reads
+    // preprocess instructions to collect literal data (float/string) and detect string reads 
     if (!list || !out)
         return;
-    for (InstrNode *n = list->head; n; n = n->next)
+    for (InstrNode *n = list->head; n; n = n->next) // iterate instructions to collect literals and store info
     {
-        reset_int_reg_cursor();
+        reset_int_reg_cursor(); // reset temp register cursor for each instruction
         Instr *i = n->instr;
-        if (i->iop == OP_PRINT)
+        if (i->iop == OP_PRINT) // collect literals used in PRINT
         {
             if (i->arg1.kind == ATOM_STRING)
             {
@@ -391,7 +391,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
                 (void)pool_float_literal(i->arg1.contents.fval);
             }
         }
-        else if (i->iop == OP_ASSIGN)
+        else if (i->iop == OP_ASSIGN) // collect literals used in ASSIGN
         {
             if (i->arg1.kind == ATOM_STRING)
             {
@@ -401,7 +401,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
             {
                 (void)pool_float_literal(i->arg1.contents.fval);
             }
-            if (i->has_binop)
+            if (i->has_binop) // also check second argument if binary op
             {
                 if (i->arg2.kind == ATOM_STRING)
                 {
@@ -413,7 +413,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
                 }
             }
         }
-        else if (i->iop == OP_COND)
+        else if (i->iop == OP_COND) // collect literals used in COND
         {
             if (i->rel_left.kind == ATOM_STRING)
                 (void)pool_string_literal(i->rel_left.contents.sval);
@@ -436,7 +436,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
         }
     }
 
-    // emit data section
+    // emit data section, might be empty
     emit_data_section(out);
 
     // emit .text section and prologue
@@ -454,13 +454,13 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
         Instr *instr = n->instr;
         switch (instr->iop)
         {
-        case OP_LABEL:
+        case OP_LABEL: // emit label
             fprintf(out, "%s:\n", instr->dest ? instr->dest : "L_unknown");
             break;
-        case OP_JUMP:
+        case OP_JUMP: // unconditional jump
             fprintf(out, "    j %s\n", instr->dest ? instr->dest : "L_unknown");
             break;
-        case OP_JUMP_FALSE:
+        case OP_JUMP_FALSE: // conditional jump
         {
             if (instr->cond.kind == ATOM_FLOAT)
             {
@@ -473,7 +473,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
             break;
         }
 
-        case OP_PRINT:
+        case OP_PRINT: // print instruction
         {
             if (instr->arg1.kind == ATOM_STRING)
             {
@@ -542,7 +542,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
             fprintf(out, "    syscall\n");
             break;
         }
-        case OP_READ:
+        case OP_READ: // read instruction
         {
             const char *name = instr->dest ? instr->dest : "";
             SymbolInfo *sinfo = lookup_value(table, (char *)name);
@@ -572,7 +572,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
 
             break;
         }
-        case OP_ASSIGN:
+        case OP_ASSIGN: // assignment instruction
         {
             if (!instr->has_binop)
             {
@@ -586,7 +586,7 @@ void printMIPS(const InstrList *list, Table table, FILE *out)
             }
             break;
         }
-        case OP_COND:
+        case OP_COND: // conditional branch
         {
             emit_relop_pair(out, &instr->rel_left, instr->rop, &instr->rel_right, instr->label_true, instr->label_false, table);
             break;
